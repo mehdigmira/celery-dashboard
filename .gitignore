@@ -1,0 +1,7 @@
+celery_dashboard/api/frontend/node_modules
+*.iml
+.idea
+*.pyc
+*.egg-info
+.cache
+dump.rdb
