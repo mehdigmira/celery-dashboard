@@ -4,7 +4,7 @@
     <v-dialog v-model="open" scrollable>
         <v-card>
           <v-toolbar color="primary" dark>
-          <v-toolbar-title>{{ task.task_id }}</v-toolbar-title>
+          <v-toolbar-title>Task {{ task.task_id }}</v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-card-text>

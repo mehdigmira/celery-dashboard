@@ -12,26 +12,30 @@ api = Blueprint('api', __name__, url_prefix='/api')
 
 @api.route("/tasks")
 def get_tasks():
-  data = request.get_json()
+  data = request.args
+
+  offset = int(request.args.get("start") or 0)
+  limit = int(request.args.get("end") or 5) - offset
 
   q = current_app.db.session.query(Task)
 
-  if data:
-    if "status" in data:
-      q = q.filter(Task.status == data["status"])
+  if "status" in data:
+    q = q.filter(Task.status == data["status"])
 
-    if "queue" in data:
-      q = q.filter(Task.routing_key == data["queue"])
+  if "queue" in data:
+    q = q.filter(Task.routing_key == data["queue"])
 
-    if "task_name" in data:
-      q = q.filter(Task.name == data["task_name"])
+  if "task_name" in data:
+    q = q.filter(Task.name == data["task_name"])
 
-    if "exception_type" in data:
-      q = q.filter(Task.exception_type == data["exception_type"])
+  if "exception_type" in data:
+    q = q.filter(Task.exception_type == data["exception_type"])
 
+  count = q.count()
+  q = q.order_by(Task.date_queued.asc()).offset(offset).limit(limit)
   result = [task.serialized for task in q.yield_per(1000)]
 
-  return json.dumps({"result": result})
+  return json.dumps({"result": result, "count": count})
 
 
 @api.route("/task/<task_id>/revoke")

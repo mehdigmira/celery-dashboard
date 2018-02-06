@@ -2,40 +2,8 @@
 <div>
   <task-dialog :open-dialog="openDialog" v-on:taskdialogclosed="taskDialogClosed" :task="taskToOpen"></task-dialog>
   <ag-grid-vue class="ag-theme-material grid"
-               :gridOptions="gridOptions"
-               :rowClicked="onRowClicked"
-               :rowDataChanged="onRowDataChanged">
+               :gridOptions="gridOptions">
   </ag-grid-vue>
-
-  <v-navigation-drawer
-      temporary
-      v-model="drawer"
-      :mini-variant="mini"
-      dark
-      absolute
-    >
-      <v-list class="pa-1">
-        <v-list-tile v-if="mini" @click.stop="mini = !mini">
-          <v-list-tile-action>
-            <v-icon>chevron_right</v-icon>
-          </v-list-tile-action>
-        </v-list-tile>
-        <v-list-tile avatar tag="div">
-          <v-list-tile-avatar>
-            <img src="https://randomuser.me/api/portraits/men/85.jpg" />
-          </v-list-tile-avatar>
-          <v-list-tile-content>
-            <v-list-tile-title>John Leider</v-list-tile-title>
-          </v-list-tile-content>
-          <v-list-tile-action>
-            <v-btn icon @click.stop="mini = !mini">
-              <v-icon>chevron_left</v-icon>
-            </v-btn>
-          </v-list-tile-action>
-        </v-list-tile>
-      </v-list>
-    </v-navigation-drawer>
-
 </div>
 </template>
 
@@ -64,7 +32,7 @@
   })
 
   export default {
-    name: 'munro-grid',
+    name: 'tasks-grid',
     data () {
       return {
         gridOptions: null,
@@ -86,14 +54,45 @@
           return response.json()
         })
           .then((json) => {
-            this.gridOptions.api.setRowData(json.result);
+            // this.gridOptions.api.setRowData(json.result);
+            var dataSource = {
+              rowCount: null, // behave as infinite scroll
+              getRows: function(params) {
+                  console.log(params);
+                  console.log('asking for ' + params.startRow + ' to ' + params.endRow);
+                  fetch(`/api/tasks?start=${params.startRow}&end=${params.endRow}`).then((response) => {
+                    return response.json()
+                  })
+                  .then((json) => {
+                    params.successCallback(json.result);
+                  });
+                  
+                  // At this point in your code, you would call the server, using $http if in AngularJS 1.x.
+                  // To make the demo look real, wait for 500ms before returning
+                  // setTimeout(function() {
+                  //     // take a slice of the total rows
+                  //     var dataAfterSortingAndFiltering = sortAndFilter(data, params.sortModel, params.filterModel);
+                  //     var rowsThisPage = dataAfterSortingAndFiltering.slice(params.startRow, params.endRow);
+                  //     // if on or after the last page, work out the last row.
+                  //     var lastRow = -1;
+                  //     if (dataAfterSortingAndFiltering.length <= params.endRow) {
+                  //         lastRow = dataAfterSortingAndFiltering.length;
+                  //     }
+                  //     // call the success callback
+                  //     params.successCallback(rowsThisPage, lastRow);
+                  // }, 500);
+              }
+            };
+
+            this.gridOptions.api.setDatasource(dataSource);
           });
       },
       createColDefs() {
         function toText(params) {
-          return `<pre class="json-formatted">${JSON.stringify(params.data[params.colDef.field], null, 2)}</pre>`
+            if (params.value !== undefined) {
+              return `<pre class="json-formatted">${JSON.stringify(params.data[params.colDef.field], null, 2)}</pre>`;
+            }
         }
-
         return [
           {headerName: "Task", field: "name", width: 200, suppressSizeToFit: true},
           {headerName: "Queue", field: "routing_key", width: 150, suppressSizeToFit: true},
@@ -102,41 +101,62 @@
           {headerName: "Status", field: "status", width: 150, suppressSizeToFit: true, cellRendererFramework: StatusChipComponent},
           {
             headerName: "Date", field: "date_done", width: 180, cellRenderer(params) {
-                let s = [];
-                if (params.data.date_done) s.push("Done: " + moment.utc(params.data.date_done).fromNow())
-                if (params.data.date_queued) s.push("Queued: " + moment.utc(params.data.date_queued).fromNow())
-                if (params.data.eta) s.push("Eta: " + moment.utc(params.data.eta).fromNow())
-            return `<pre class="simple-text">${s.join("\n")}</pre>`
+                if (params.value !== undefined) {
+                  let s = [];
+                  if (params.data.date_done) s.push("Done: " + moment.utc(params.data.date_done).fromNow())
+                  if (params.data.date_queued) s.push("Queued: " + moment.utc(params.data.date_queued).fromNow())
+                  if (params.data.eta) s.push("Eta: " + moment.utc(params.data.eta).fromNow())
+                  return `<pre class="simple-text">${s.join("\n")}</pre>`
+                }
           }
           },
         ];
-      },
-      onRowClicked(params) {
-        this.$emit("munroSelected", params.node.data)
-      },
-      onRowDataChanged() {
-        Vue.nextTick(() => {
-            this.gridOptions.api.sizeColumnsToFit();
-          }
-        );
       }
     },
     created() {
       var self = this;
       this.gridOptions = {
-        enableFilter: true,
+        debug: true,
+        // enableServerSideSorting: true,
+        // enableServerSideFilter: true,
+        enableColResize: true,
+        rowDeselection: true,
+        rowModelType: 'infinite',
+        cacheOverflowSize: 2,
+        maxConcurrentDatasourceRequests: 2,
+        infiniteInitialRowCount: 0,
+        maxBlocksInCache: 100,
+        pagination: true,
+        paginationAutoPageSize: true,
+        cacheBlockSize: 5,
         suppressCellClickSelection: true,
         enableColResize: true,
-        getRowHeight(params) {
-          return 120;
+        onGridReady() {
+          var api = this.api;
+          api.setDatasource({
+            rowCount: null, // behave as infinite scroll 
+            getRows: function(params) {
+              console.log(params);
+              console.log('asking for ' + params.startRow + ' to ' + params.endRow);
+              fetch(`/api/tasks?start=${params.startRow}&end=${params.endRow}`).then((response) => {
+                return response.json()
+              })
+              .then((json) => {
+                params.successCallback(json.result, json.count);
+                Vue.nextTick(() => {
+                  api.sizeColumnsToFit();
+                });
+              });
+            }
+          });
         },
+        rowHeight: 120,
         onRowDoubleClicked(row) {
           self.openDialog = true;
           self.taskToOpen = row.data;
-        }
+        },
+        columnDefs: this.createColDefs()
       };
-      this.gridOptions.columnDefs = this.createColDefs();
-      this.loadRowData();
     }
   }
 </script>

@@ -1,11 +1,13 @@
 <template>
   <v-app light id="app">
-    <munro-grid></munro-grid>
+    <side-menu></side-menu>
+    <tasks-grid></tasks-grid>
   </v-app>
 </template>
 
 <script>
-  import MunroGrid from './components/TasksGrid';
+  import TasksGrid from './components/TasksGrid';
+  import SideMenu from './components/SideMenu';
 
   export default {
     name: 'app',
@@ -15,6 +17,7 @@
     },
     components: {
       TasksGrid,
+      SideMenu
     },
     methods: {
 

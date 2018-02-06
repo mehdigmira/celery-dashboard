@@ -8,7 +8,7 @@ celery_app.conf.dashboard_redis_url = 'redis://localhost'
 
 # celery_app.control.enable_events()
 
-init(celery_app, "postgresql://postgres:*@localhost:5432/main")
+init(celery_app, "")
 
 
 # @celery_app.task(name="div", only_store=("FAILURE",))
