@@ -46,7 +46,6 @@ def task_retry_handler(sender=None, reason=None, request=None, einfo=None, **opt
   update_dict = {}
   if eta:
     update_dict["eta"] = dateutil.parser.parse(eta)
-  print "RETRY", eta
   Task.upsert(request.id, status="RETRY", name=sender.name, routing_key=request.delivery_info["routing_key"],
               exception_type=str(reason), args=request.args, kwargs=request.kwargs, traceback=str(einfo),
               date_done=datetime.utcnow(), **update_dict)

@@ -20,12 +20,12 @@
                 <v-list-tile-title>Home</v-list-tile-title>
                 </v-list-tile-content>
             </v-list-tile>
-            <v-list-tile @click="">
+            <v-list-tile @click="" href="#jobs">
                 <v-list-tile-action>
                 <v-icon>grid_on</v-icon>
                 </v-list-tile-action>
                 <v-list-tile-content>
-                <v-list-tile-title>Tasks</v-list-tile-title>
+                <v-list-tile-title>Jobs</v-list-tile-title>
                 </v-list-tile-content>
             </v-list-tile>
             <v-list-tile @click="">

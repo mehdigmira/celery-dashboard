@@ -13,6 +13,7 @@
     "ag-grid-vue": "^15.0.0",
     "bootstrap": "^4.0.0",
     "vue": "^2.2.1",
+    "vue-router": "^3.0.1",
     "vuetify": "^0.17.6",
     "whatwg-fetch": "^2.0.2"
   },

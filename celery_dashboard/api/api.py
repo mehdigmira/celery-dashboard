@@ -14,9 +14,6 @@ api = Blueprint('api', __name__, url_prefix='/api')
 def get_tasks():
   data = request.args
 
-  offset = int(request.args.get("start") or 0)
-  limit = int(request.args.get("end") or 5) - offset
-
   q = current_app.db.session.query(Task)
 
   if "status" in data:
@@ -25,14 +22,29 @@ def get_tasks():
   if "queue" in data:
     q = q.filter(Task.routing_key == data["queue"])
 
-  if "task_name" in data:
-    q = q.filter(Task.name == data["task_name"])
+  if "task" in data:
+    q = q.filter(Task.name == data["task"])
 
-  if "exception_type" in data:
-    q = q.filter(Task.exception_type == data["exception_type"])
+  if "exception" in data:
+    q = q.filter(Task.exception_type == data["exception"])
+
+  if "taskId" in data:
+    q = q.filter(Task.task_id == data["taskId"])
 
   count = q.count()
+
+  # add sorting here
+  sorts = data.get("sort") or ""
+  if sorts:
+    for sort_str in sorts.split(","):
+      col, direction = sort_str.split(":")
+      q = q.order_by(getattr(getattr(Task, col), direction)())
+
+  # offset and limit
+  offset = int(request.args.get("start") or 0)
+  limit = int(request.args.get("end") or 5) - offset
   q = q.order_by(Task.date_queued.asc()).offset(offset).limit(limit)
+
   result = [task.serialized for task in q.yield_per(1000)]
 
   return json.dumps({"result": result, "count": count})
