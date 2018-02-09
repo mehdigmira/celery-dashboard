@@ -1,4 +1,4 @@
-# celery-dashboard
+# celery-dashboard (WIP)
 A dashboard to monitor celery tasks. 
 
 Advantages over Celery Flower:
