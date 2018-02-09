@@ -10,11 +10,22 @@ from celery_dashboard.models import Task
 api = Blueprint('api', __name__, url_prefix='/api')
 
 
-@api.route("/tasks")
-def get_tasks():
-  data = request.args
+def with_task(func):
+  def decorator(task_id, *args, **kwargs):
+    task = current_app.db.session.query(Task).filter(Task.task_id == task_id).one()
+    return func(task, *args, **kwargs)
+  decorator.__name__ = func.__name__
+  return decorator
 
+
+@api.route("/tasks", methods=["GET", "DELETE", "POST"])
+def tasks():
   q = current_app.db.session.query(Task)
+
+  if request.method == "GET":
+    data = request.args
+  else:
+    data = request.get_json()
 
   if "status" in data:
     q = q.filter(Task.status == data["status"])
@@ -33,43 +44,61 @@ def get_tasks():
 
   count = q.count()
 
-  # add sorting here
-  sorts = data.get("sort") or ""
-  if sorts:
-    for sort_str in sorts.split(","):
-      col, direction = sort_str.split(":")
-      q = q.order_by(getattr(getattr(Task, col), direction)())
+  if request.method == "GET":
+    # add sorting here
+    sorts = data.get("sort") or ""
+    if sorts:
+      for sort_str in sorts.split(","):
+        col, direction = sort_str.split(":")
+        q = q.order_by(getattr(getattr(Task, col), direction)())
 
-  # offset and limit
-  offset = int(request.args.get("start") or 0)
-  limit = int(request.args.get("end") or 5) - offset
-  q = q.order_by(Task.date_queued.asc()).offset(offset).limit(limit)
+    # offset and limit
+    offset = int(request.args.get("start") or 0)
+    limit = int(request.args.get("end") or 5) - offset
+    q = q.order_by(Task.date_queued.asc()).offset(offset).limit(limit)
 
-  result = [task.serialized for task in q.yield_per(1000)]
+    result = [task.serialized for task in q.yield_per(1000)]
 
-  return json.dumps({"result": result, "count": count})
+    return json.dumps({"result": result, "count": count})
+  elif request.method == "DELETE":
+    for task in q.yield_per(1000):
+      current_app.celery_app.control.revoke(task.task_id)
+    q.delete()
+    current_app.db.session.commit()
+    return json.dumps({"count": count})
+  elif request.method == "POST":
+    to_rm = []
+    for task in q.yield_per(1000):
+      to_rm.append(task.task_id)
+      current_app.celery_app.send_task(task.name, args=task.args or [], kwargs=task.kwargs or {},
+                                       queue=task.routing_key or "celery")
+      if len(to_rm) > 1000:
+        current_app.db.session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
+        to_rm = []
+    if to_rm:
+      current_app.db.session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
+    current_app.db.session.commit()
+    return json.dumps({"count": count})
 
 
 @api.route("/task/<task_id>/revoke")
-def revoque_task(task_id):
-  current_app.celery_app.revoque(task_id)
+@with_task
+def revoke_task(task):
+  current_app.celery_app.control.revoke(task.task_id)
+  current_app.db.session.delete(task)
+  current_app.db.session.commit()
 
   return json.dumps({"message": "ok"})
 
 
 @api.route("/task/<task_id>/requeue")
-def requeue_task(task_id):
-  task = current_app.db.session.query(Task).filter(Task.task_id == task_id)
-
-  current_app.celery_app.apply_async(task.name, args=task.args or [], kwds=task.kwargs or {},
-                                     queue=task.routing_key or "celery")
-
-  return json.dumps({"message": "ok"})
-
-
-@api.route("/task/<task_id>/forget")
-def forget_task(task_id):
-  current_app.db.session.query(Task).filter(Task.task_id == task_id).delete()
+@with_task
+def requeue_task(task):
+  current_app.celery_app.send_task(task.name, args=task.args or [], kwargs=task.kwargs or {},
+                                   queue=task.routing_key or "celery")
+  current_app.db.session.delete(task)
+  current_app.db.session.commit()
 
   return json.dumps({"message": "ok"})
+
 

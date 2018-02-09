@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import dateutil.parser
 from celery import current_app
@@ -24,7 +24,7 @@ def check_restricted_statuses(status, task_name_getter):
 def task_sent_handler(sender=None, headers=None, body=None, properties=None, **kwargs):
     # information about task are located in headers for task messages
     # using the task protocol version 2.
-    info = headers if 'task' in headers else body
+    info = (headers if 'task' in headers else body) or {}
     now = datetime.utcnow()
     eta = info.get("eta") or now
     Task.upsert(info["id"], status="QUEUED", date_queued=now, name=sender,
@@ -42,13 +42,15 @@ def task_started_handler(sender=None, task_id=None, args=None, kwargs=None, **op
 @task_retry.connect
 @check_restricted_statuses(status="RETRY", task_name_getter=lambda x: x.name)
 def task_retry_handler(sender=None, reason=None, request=None, einfo=None, **opts):
-  eta = getattr(sender.request, "eta", None)
-  update_dict = {}
-  if eta:
-    update_dict["eta"] = dateutil.parser.parse(eta)
+  when = getattr(getattr(einfo, "exception", None), "when")
+  eta = None
+  if isinstance(when, datetime):
+    eta = when
+  elif isinstance(when, int):
+    eta = datetime.utcnow() + timedelta(seconds=when)
   Task.upsert(request.id, status="RETRY", name=sender.name, routing_key=request.delivery_info["routing_key"],
               exception_type=str(reason), args=request.args, kwargs=request.kwargs, traceback=str(einfo),
-              date_done=datetime.utcnow(), **update_dict)
+              date_done=datetime.utcnow(), eta=eta)
 
 
 @task_success.connect
