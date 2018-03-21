@@ -1,13 +1,5 @@
 <template>
 <div>
-  <v-snackbar
-      :timeout="snackbar.timeout"
-      :color="snackbar.color"
-      v-model="snackbar.open"
-  >
-    {{ snackbar.text }}
-    <v-btn dark flat @click.native="snackbar.open = false">Close</v-btn>
-  </v-snackbar>
   <div class="filter-box">
     <v-form ref="form">
       <v-layout row wrap>
@@ -54,6 +46,7 @@
               </v-list-tile-title>
             </v-list-tile>
           </v-list>
+
           </v-menu>
       </v-layout>
     </v-form>
@@ -72,6 +65,7 @@
   import 'whatwg-fetch';
   import Vuetify from 'vuetify';
   import TaskDialog from './TaskDialog';
+  import { EventBus } from '../utils/bus.js';
 
   const moment = require("moment");
 
@@ -99,7 +93,6 @@
               `,
     methods: {
       getColor() {
-        console.log(this.params.data.task_id);
             let color = "primary";
             if (this.params.value == "QUEUED") color = "orange";
             if (this.params.value == "SUCCESS") color = "green";
@@ -109,33 +102,50 @@
       },
       revoke() {
         fetch(`/api/task/${this.params.data.task_id}/revoke`).then((response) => {
-              if (response.status !== 200) return this.params.context.componentParent.showSnackbar("An error occurred", "error", 2000);
-              return this.params.context.componentParent.showSnackbar("Task successfully cancelled", "success", 2000);
+              if (response.status !== 200) return EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
+              return EventBus.$emit('snackbar:show', {text: "Task successfully cancelled", color: "success", timeout: 2000});
         });
       },
       requeue() {
         fetch(`/api/task/${this.params.data.task_id}/requeue`).then((response) => {
-              if (response.status !== 200) return this.params.context.componentParent.showSnackbar("An error occurred", "error", 2000);
-              return this.params.context.componentParent.showSnackbar("Task successfully queued", "success", 2000);
+              if (response.status !== 200) return EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
+              return EventBus.$emit('snackbar:show', {text: "Task successfully queued", color: "success", timeout: 2000});
         });
       }
     }
   });
 
+  const DateCellComponent = Vue.extend({
+    template: `
+              <div>
+                <pre class="simple-text">{{ getDateText() }}</pre>
+                <v-tooltip right v-if="(params.data.meta || {}).progress">
+                  <v-progress-circular :value="params.data.meta.progress" :rotate="-90" color="lime" slot="activator"></v-progress-circular>
+                  <span>Completed {{ params.data.meta.progress }}%</span>
+                </v-tooltip>
+              </div>
+              `,
+    methods: {
+      getDateText() {
+        let s = [];
+        if (this.params.value !== undefined) {
+          if (this.params.data.date_done) s.push("Done: " + moment.utc(this.params.data.date_done).fromNow());
+          if (this.params.data.date_queued) s.push("Queued: " + moment.utc(this.params.data.date_queued).fromNow());
+          if (this.params.data.eta) s.push("Eta: " + moment.utc(this.params.data.eta).fromNow());
+        }
+        return s.join("\n");
+      }
+    }
+  });
+
+
   export default {
     name: 'tasks-grid',
     data () {
       return {
-        loading: false,
         gridOptions: null,
-        rowData: null,
         openDialog: false,
         taskToOpen: {},
-        snackbar: {
-          timeout: null,
-          color: null,
-          open: false
-        },
         filters: {
           task: this.$route.query.task,
           status: this.$route.query.status,
@@ -150,12 +160,6 @@
       TaskDialog
     },
     methods: {
-      showSnackbar(text, color, timeout) {
-        this.snackbar.color = color;
-        this.snackbar.text = text;
-        this.snackbar.timeout = timeout;
-        this.snackbar.open = true;
-      },
       cancelAll() {
         let filters = {};
         let self = this;
@@ -170,10 +174,10 @@
             },
           body: JSON.stringify(filters)
         }).then((response) => {
-            if (response.status !== 200) return self.showSnackbar("An error occurred", "error", 2000);
+            if (response.status !== 200) return EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
             return response.json();
-        }).then(function (json) {
-          return self.showSnackbar(`${json.count} task(s) successfully cancelled`, "success", 2000);
+        }).then((json) => {
+          return EventBus.$emit('snackbar:show', {text: `${json.count} task(s) successfully cancelled`, color: "success", timeout: 2000});
         })
       },
       requeueAll() {
@@ -190,10 +194,10 @@
             },
           body: JSON.stringify(filters)
         }).then((response) => {
-            if (response.status !== 200) return self.showSnackbar("An error occurred", "error", 2000);
+            if (response.status !== 200) return EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
             return response.json();
-        }).then(function (json) {
-          return self.showSnackbar(`${json.count} task(s) successfully requeued`, "success", 2000);
+        }).then((json) => {
+          return EventBus.$emit('snackbar:show', {text: `${json.count} task(s) successfully requeued`, color: "success", timeout: 2000});
         })
       },
       filterData() {
@@ -216,15 +220,7 @@
           {headerName: "Kwargs", field: "kwargs", cellRenderer: toText, suppressSorting: true},
           {headerName: "Status", field: "status", width: 150, suppressSizeToFit: true, cellRendererFramework: StatusChipComponent, cellClass: ['centered-cell']},
           {
-            headerName: "Date", field: "date_done", width: 180, cellRenderer(params) {
-                if (params.value !== undefined) {
-                  let s = [];
-                  if (params.data.date_done) s.push("Done: " + moment.utc(params.data.date_done).fromNow())
-                  if (params.data.date_queued) s.push("Queued: " + moment.utc(params.data.date_queued).fromNow())
-                  if (params.data.eta) s.push("Eta: " + moment.utc(params.data.eta).fromNow())
-                  return `<pre class="simple-text">${s.join("\n")}</pre>`
-                }
-            }
+            headerName: "Date", field: "date_done", width: 180, cellRendererFramework: DateCellComponent
           }
         ];
       },
@@ -238,9 +234,10 @@
       },
       getDatasource(api) {
         let self = this;
+        api.showLoadingOverlay();
         return {
           rowCount: null, // behave as infinite scroll
-          getRows: function(params) {
+          getRows(params) {
             let sorts = [];
             params.sortModel.forEach((model) => {
               sorts.push(`${model.colId}:${model.sort}`)
@@ -249,6 +246,7 @@
             let apiRoute = `/api/tasks?start=${params.startRow}&end=${params.endRow}&sort=${sorts.join(',')}`
             if (filters != "") apiRoute += `&${filters.join("&")}`;
             fetch(apiRoute).then((response) => {
+              api.hideOverlay();
               return response.json()
             })
             .then((json) => {
@@ -267,6 +265,7 @@
         context: {
           componentParent: self
         },
+        overlayLoadingTemplate: '<span class="ag-overlay-loading-center">Loading jobs...</span>',
         enableServerSideSorting: true,
         enableServerSideFilter: false,
         suppressFilter: true,
@@ -292,6 +291,7 @@
         },
         columnDefs: this.createColDefs()
       };
+      Vue.nextTick(() => { this.gridOptions.api.sizeColumnsToFit(); });
     }
   }
 </script>
@@ -333,6 +333,7 @@
     word-break: break-all;
     word-wrap: break-word;
     padding-top: 10px;
+    margin-bottom: 10px;
   }
 
   .filter-box {

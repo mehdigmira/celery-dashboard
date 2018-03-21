@@ -12,15 +12,15 @@
             </v-toolbar>
             <v-divider></v-divider>
             <v-list dense class="pt-0">
-            <v-list-tile @click="">
+            <v-list-tile :to="{name: 'workers'}">
                 <v-list-tile-action>
                 <v-icon>home</v-icon>
                 </v-list-tile-action>
                 <v-list-tile-content>
-                <v-list-tile-title>Home</v-list-tile-title>
+                <v-list-tile-title>Workers</v-list-tile-title>
                 </v-list-tile-content>
             </v-list-tile>
-            <v-list-tile @click="" href="#jobs">
+            <v-list-tile :to="{name: 'jobs'}">
                 <v-list-tile-action>
                 <v-icon>grid_on</v-icon>
                 </v-list-tile-action>
@@ -28,15 +28,7 @@
                 <v-list-tile-title>Jobs</v-list-tile-title>
                 </v-list-tile-content>
             </v-list-tile>
-            <v-list-tile @click="">
-                <v-list-tile-action>
-                <v-icon>schedule</v-icon>
-                </v-list-tile-action>
-                <v-list-tile-content>
-                <v-list-tile-title>Scheduled tasks</v-list-tile-title>
-                </v-list-tile-content>
-            </v-list-tile>
-            <v-list-tile @click="">
+            <v-list-tile :to="{name: 'queues'}">
                 <v-list-tile-action>
                 <v-icon>compare_arrows</v-icon>
                 </v-list-tile-action>

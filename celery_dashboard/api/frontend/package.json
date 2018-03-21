@@ -1,8 +1,6 @@
 {
   "name": "celery-dashboard",
-  "version": "1.0.0",
-  "description": "A Vue.js project",
-  "author": "Sean Landsman <sean@thelandsmans.com>",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "node build/dev-server.js",
@@ -12,6 +10,8 @@
     "ag-grid": "^15.0.0",
     "ag-grid-vue": "^15.0.0",
     "bootstrap": "^4.0.0",
+    "jquery": "^3.3.1",
+    "jquery-sparkline": "^2.4.0",
     "vue": "^2.2.1",
     "vue-router": "^3.0.1",
     "vuetify": "^0.17.6",
