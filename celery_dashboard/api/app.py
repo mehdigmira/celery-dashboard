@@ -3,15 +3,15 @@
 
 from __future__ import unicode_literals
 
-from flask import Flask
-from flask import render_template
+from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 
+from celery_dashboard.api.static import static
 from celery_dashboard.api.api import api
 
 
 def get_app(celery_app):
-  app = Flask(__name__)
+  app = Flask(__name__, template_folder="frontend/dist")
 
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config["SQLALCHEMY_DATABASE_URI"] = celery_app.conf.dashboard_pg_uri
@@ -20,9 +20,10 @@ def get_app(celery_app):
   app.celery_app = celery_app
 
   app.register_blueprint(api)
+  app.register_blueprint(static)
 
   @app.route("/")
   def index():
-    return render_template("index.html")
+    return send_from_directory("frontend/dist", "index.html")
 
   return app
