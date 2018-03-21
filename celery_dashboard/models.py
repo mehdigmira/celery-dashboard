@@ -71,13 +71,15 @@ class Task(MyResultModelBase):
   __tablename__ = 'tasks'
   __table_args__ = {'schema': 'celery_jobs'}
 
-  task_id = sa.Column(sa.Text, unique=True, primary_key=True, autoincrement=False)
+  id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+  task_id = sa.Column(sa.Text, unique=True)
   status = sa.Column(sa.Text, index=True)
   name = sa.Column(sa.Text, default=None, index=True)
   routing_key = sa.Column(sa.String(50), default=None, index=True)
   result = sa.Column(JSONB, nullable=True)
   args = sa.Column(JSONB, nullable=True)
   kwargs = sa.Column(JSONB, nullable=True)
+  meta = sa.Column(JSONB, nullable=True)
   date_done = sa.Column(sa.DateTime, nullable=True, index=True)
   date_queued = sa.Column(sa.DateTime, nullable=True, index=True)
   eta = sa.Column(sa.DateTime, nullable=True, index=True)
@@ -89,6 +91,7 @@ class Task(MyResultModelBase):
 
   def to_dict(self):
     return {
+      'id': self.id,
       'task_id': self.task_id,
       'status': self.status,
       'result': self.result,
@@ -100,12 +103,14 @@ class Task(MyResultModelBase):
       'routing_key': self.routing_key,
       'exception_type': self.exception_type,
       'kwargs': self.kwargs,
-      'args': self.args
+      'args': self.args,
+      'meta': self.meta
     }
 
   @property
   def serialized(self):
     return {
+      'id': self.id,
       'task_id': self.task_id,
       'status': self.status,
       'result': self.result,
@@ -118,6 +123,7 @@ class Task(MyResultModelBase):
       'exception_type': self.exception_type,
       'kwargs': self.kwargs,
       'args': self.args,
+      'meta': self.meta
     }
 
   @classmethod
@@ -125,10 +131,10 @@ class Task(MyResultModelBase):
     table = cls.__table__
     insert_stmt = insert(table).values(task_id=task_id, **opts)
     if on_conflict_do_nothing:
-      stm = insert_stmt.on_conflict_do_nothing(constraint=table.primary_key)
+      stm = insert_stmt.on_conflict_do_nothing(index_elements=[table.c.task_id])
     else:
       stm = insert_stmt.on_conflict_do_update(
-        constraint=table.primary_key,
+        index_elements=[table.c.task_id],
         set_=opts
       )
     session = SessionManager().session_factory(dburi=current_app.conf.dashboard_pg_uri)
