@@ -4,6 +4,7 @@ from flask import Blueprint
 from flask import current_app
 from flask import render_template
 from flask import request
+from sqlalchemy import func
 
 from celery_dashboard.models import Task
 
@@ -62,7 +63,7 @@ def tasks():
     return json.dumps({"result": result, "count": count})
   elif request.method == "DELETE":
     for task in q.yield_per(1000):
-      current_app.celery_app.control.revoke(task.task_id)
+      current_app.celery_app.control.revoke(task.task_id, terminate=True)
     q.delete()
     current_app.db.session.commit()
     return json.dumps({"count": count})
@@ -102,3 +103,32 @@ def requeue_task(task):
   return json.dumps({"message": "ok"})
 
 
+@api.route("/queues")
+def get_queues():
+  by_queue = {}
+
+  q = (current_app.db.session.query(Task.status, Task.routing_key, func.count(Task.id))
+       .group_by(Task.status, Task.routing_key))
+
+  for row in q:
+    status, routing_key, count = row
+    sub_dict = by_queue.setdefault(routing_key, {"QUEUED": 0, "STARTED": 0, "RETRY": 0, "ALL": 0,
+                                                 "routing_key": routing_key})
+    sub_dict[status] = count
+    sub_dict["ALL"] += count
+
+  return json.dumps({"result": by_queue.values()})
+
+
+@api.route("/workers")
+def get_workers():
+  workers = []
+  for worker_name, stats in (current_app.celery_app.control.inspect().stats() or {}).items():
+    workers.append({
+      "name": worker_name,
+      "broker": stats.get("broker", {}).get("transport"),
+      "poolSize": stats.get("pool", {}).get("max-concurrency"),
+      "tasks": stats.get("total", {}),
+      "pid": stats.get("pid")
+    })
+  return json.dumps({"result": workers})
