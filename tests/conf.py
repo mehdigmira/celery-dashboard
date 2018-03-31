@@ -1,0 +1,1 @@
+PG_URI = "postgresql://docker:docker@localhost:5432/docker"
