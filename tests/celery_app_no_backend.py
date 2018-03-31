@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 from ..celery_dashboard import init
 from ..celery_dashboard.utils import set_progress
 
-celery_app = Celery('test_app', broker='redis://localhost', backend='redis://localhost')
+celery_app = Celery('test_app', broker='redis://localhost', backend=None)
 celery_app.conf.update(accept_content = ['json', 'pickle'])
 
-init(celery_app, "postgresql://docker:docker@localhost:5432/docker", db_echo="debug")
+init(celery_app, "postgresql://docker:docker@localhost:5432/docker", db_echo=False)
 
 
 @celery_app.task(name="retry_with_countdown", bind=True)

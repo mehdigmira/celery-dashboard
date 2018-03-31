@@ -1,12 +1,23 @@
 import time
+
+from celery.result import AsyncResult
+from celery.backends.base import DisabledBackend
 from redis import StrictRedis
 
 
-def wait_for_task_to_run(queue="celery"):
-    redis_instance = StrictRedis()
-    while True:
-        if redis_instance.llen(queue) == 0:
-            return
+def wait_for_task_to_run(task, queue="celery"):
+    if isinstance(task.backend, DisabledBackend):
+        redis_instance = StrictRedis()
+        while True:
+            if redis_instance.llen(queue) == 0:
+                break
+            time.sleep(0.5)
+        time.sleep(0.5)
+    else:
+        try:
+            task.wait(timeout=5)
+        except Exception:
+            pass
         time.sleep(0.5)
 
 

@@ -7,24 +7,23 @@ import signal
 import time
 
 from redis import StrictRedis
-
-from .conf import PG_URI
-from ..celery_dashboard.models import session_cleanup, SessionManager
+from sqlalchemy import create_engine
 
 
 class CeleryWorker(object):
-    def __init__(self):
+    def __init__(self, with_backend=True):
         self.flush_db()
         self.flush_redis()
         self.started = False
+        self.with_backend = with_backend
 
     def flush_redis(self):
         redis_instance = StrictRedis()
         redis_instance.flushall()
 
     def flush_db(self):
-        session = SessionManager().session_factory(dburi=PG_URI)
-        with session_cleanup(session):
+        from ..celery_dashboard.models import session_ctx_manager
+        with session_ctx_manager() as session:
             session.execute("TRUNCATE celery_jobs.tasks")
             session.commit()
 
@@ -35,7 +34,12 @@ class CeleryWorker(object):
 
         env = os.environ.copy()
         env["C_FORCE_ROOT"] = 'true'
-        self.worker_process = subprocess.Popen(["celery", "-A", "app.tests.celery_app", "worker", "-l", "DEBUG"],
+
+        suffix = ""
+        if not self.with_backend:
+            suffix = "_no_backend"
+        self.worker_process = subprocess.Popen(["celery", "-A", "app.tests.celery_app%s" % suffix,
+                                                "worker", "-l", "DEBUG"],
                                                cwd="/", shell=False, env=env)
         self.started = True
 
@@ -64,7 +68,15 @@ class CeleryWorker(object):
 @pytest.yield_fixture
 @pytest.fixture(scope="function")
 def celery_worker():
-    celery_worker = CeleryWorker()
+    celery_worker = CeleryWorker(with_backend=True)
+    yield celery_worker
+    celery_worker.stop()
+
+
+@pytest.yield_fixture
+@pytest.fixture(scope="function")
+def celery_worker_no_backend():
+    celery_worker = CeleryWorker(with_backend=False)
     yield celery_worker
     celery_worker.stop()
 
@@ -72,8 +84,15 @@ def celery_worker():
 @pytest.fixture(scope="module", autouse=True)
 def ensure_postgresql():
     subprocess.call(["/etc/init.d/postgresql", "start"])
+    from .conf import PG_URI
+    from ..celery_dashboard.models import SessionMaker, prepare_models
+    db_engine = create_engine(PG_URI, client_encoding='utf8', convert_unicode=True, echo='debug', isolation_level="READ COMMITTED")
+    SessionMaker.configure(bind=db_engine)
+    prepare_models(db_engine)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def ensure_redis():
     subprocess.call(["/etc/init.d/redis-server", "start"])
+
+
