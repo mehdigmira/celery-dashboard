@@ -32,7 +32,7 @@ def task_sent_handler(sender=None, headers=None, body=None, properties=None, **k
     eta = info.get("eta") or now
     Task.upsert(info["id"], status="QUEUED", date_queued=now, name=sender,
                 routing_key=kwargs.get("routing_key"),
-                args=info["argsrepr"], kwargs=info["kwargsrepr"], on_conflict_do_nothing=True, eta=eta)
+                args=info["argsrepr"], kwargs=info["kwargsrepr"], on_conflict_update={"date_queued": now}, eta=eta)
 
 
 @task_prerun.connect
@@ -61,6 +61,7 @@ def task_retry_handler(sender=None, reason=None, request=None, einfo=None, **opt
 @task_success.connect
 @check_restricted_statuses(status="SUCCESS", task_name_getter=lambda x: x.name)
 def task_success_handler(sender=None, result=None, **opts):
+  print("SUCCESSEVENT")
   try:
     resultrepr = json.dumps(result)
   except TypeError:

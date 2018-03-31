@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 
-from celery import current_app
-from celery.backends.database import session_cleanup
 from sqlalchemy import and_
 
-from .models import SessionManager, Task
+from .models import session_ctx_manager, Task
 
 def dashboard_cleaning(status, threshold):
     tasks_table = Task.__table__
@@ -12,7 +10,6 @@ def dashboard_cleaning(status, threshold):
            .delete()
            .where(and_(tasks_table.c.status == status,
                        tasks_table.c.date_done <= datetime.utcnow() - timedelta(seconds=threshold))))
-    session = SessionManager().session_factory(dburi=current_app.conf.dashboard_pg_uri)
-    with session_cleanup(session):
+    with session_ctx_manager() as session:
         session.execute(stm)
         session.commit()

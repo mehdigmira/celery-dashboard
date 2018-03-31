@@ -1,63 +1,34 @@
-from celery import current_app
-from celery.backends.database import session_cleanup
-from celery.backends.database.session import _after_fork_cleanup_session
+from contextlib import contextmanager
+
 from celery.five import python_2_unicode_compatible
 import sqlalchemy as sa
-from kombu.utils.compat import register_after_fork
-from sqlalchemy import create_engine
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 
 MyResultModelBase = declarative_base()
 
+SessionMaker = sessionmaker()
 
-class SessionManager(object):
-  """Manage SQLAlchemy sessions."""
-
-  def __init__(self):
-    self._engines = {}
-    self._sessions = {}
-    self.forked = False
-    self.prepared = False
-    if register_after_fork is not None:
-      register_after_fork(self, _after_fork_cleanup_session)
-
-  def _after_fork(self):
-    self.forked = True
-
-  def get_engine(self, dburi, **kwargs):
-    if self.forked:
-      try:
-        return self._engines[dburi]
-      except KeyError:
-        engine = self._engines[dburi] = create_engine(dburi, **kwargs)
-        return engine
+@contextmanager
+def session_ctx_manager():
+    session = SessionMaker()
+    try:
+        yield session
+    except:
+        session.rollback()
+        session.close()
+        raise
     else:
-      return create_engine(dburi, poolclass=NullPool, echo=kwargs.get("echo", False))
+        session.commit()
+        session.close()
 
-  def create_session(self, dburi, short_lived_sessions=False, **kwargs):
-    engine = self.get_engine(dburi, **kwargs)
-    if self.forked:
-      if short_lived_sessions or dburi not in self._sessions:
-        self._sessions[dburi] = sessionmaker(bind=engine)
-      return engine, self._sessions[dburi]
-    else:
-      return engine, sessionmaker(bind=engine)
 
-  def prepare_models(self, engine):
+def prepare_models(engine):
     with engine.begin() as conn:
-      conn.execute("CREATE SCHEMA IF NOT EXISTS celery_jobs")
-    if not self.prepared:
-      MyResultModelBase.metadata.create_all(engine)
-      self.prepared = True
-
-  def session_factory(self, dburi, **kwargs):
-    engine, session = self.create_session(dburi, **kwargs)
-    self.prepare_models(engine)
-    return session()
+        conn.execute("CREATE SCHEMA IF NOT EXISTS celery_jobs")
+    MyResultModelBase.metadata.create_all(engine)
 
 
 @python_2_unicode_compatible
@@ -123,20 +94,17 @@ class Task(MyResultModelBase):
     }
 
   @classmethod
-  def upsert(cls, task_id, on_conflict_do_nothing=False, **opts):
+  def upsert(cls, task_id, on_conflict_update=None, **opts):
+    if on_conflict_update is None:
+      on_conflict_update = opts
     table = cls.__table__
     insert_stmt = insert(table).values(task_id=task_id, **opts)
-    if on_conflict_do_nothing:
-      stm = insert_stmt.on_conflict_do_nothing(index_elements=[table.c.task_id])
-    else:
-      stm = insert_stmt.on_conflict_do_update(
-        index_elements=[table.c.task_id],
-        set_=opts
-      )
-    session = SessionManager().session_factory(dburi=current_app.conf.dashboard_pg_uri)
-    with session_cleanup(session):
+    stm = insert_stmt.on_conflict_do_update(
+      index_elements=[table.c.task_id],
+      set_=on_conflict_update
+    )
+    with session_ctx_manager() as session:
       session.execute(stm)
-      session.commit()
 
   def __repr__(self):
     return '<Task {0.task_id} state: {0.status}>'.format(self)
