@@ -1,5 +1,11 @@
 from setuptools import setup, find_packages
 
+def get_requirements():
+    reqs = []
+    for filename in ["requirements.txt"]:
+        with open(filename, "r") as f:
+            reqs += [x.strip() for x in f.readlines()]
+    return reqs
 
 setup(
   name='celery-dashboard',
@@ -8,7 +14,6 @@ setup(
       'dashboard = celery_dashboard.command:CeleryDashboard',
     ],
   },
-  install_requires=["SQLAlchemy==1.1.5", "Flask==0.12", "Flask-SQLAlchemy==2.1", "celery==4.0.2", "celery[redis]",
-                    "psycopg2", "python-dateutil==2.6.1 "],
+  install_requires=get_requirements(),
   packages=find_packages()
 )
