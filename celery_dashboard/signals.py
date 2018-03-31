@@ -1,10 +1,13 @@
+import json
 from datetime import datetime, timedelta
 
-import dateutil.parser
+import pytz
 from celery import current_app
+from celery.result import ResultBase
 from celery.signals import before_task_publish, task_prerun, task_retry, task_success, task_failure
+from kombu.serialization import dumps
 
-from celery_dashboard.models import Task
+from .models import Task
 
 
 def check_restricted_statuses(status, task_name_getter):
@@ -25,17 +28,18 @@ def task_sent_handler(sender=None, headers=None, body=None, properties=None, **k
     # information about task are located in headers for task messages
     # using the task protocol version 2.
     info = (headers if 'task' in headers else body) or {}
-    now = datetime.utcnow()
+    now = pytz.UTC.localize(datetime.utcnow())
     eta = info.get("eta") or now
     Task.upsert(info["id"], status="QUEUED", date_queued=now, name=sender,
                 routing_key=kwargs.get("routing_key"),
-                args=info.get("args", []), kwargs=info.get("kwargs", {}), on_conflict_do_nothing=True, eta=eta)
+                args=info["argsrepr"], kwargs=info["kwargsrepr"], on_conflict_do_nothing=True, eta=eta)
 
 
 @task_prerun.connect
 @check_restricted_statuses(status="STARTED", task_name_getter=lambda x: x.name)
 def task_started_handler(sender=None, task_id=None, args=None, kwargs=None, **opts):
-  Task.upsert(task_id, status="STARTED", name=sender.name, args=args, kwargs=kwargs,
+  Task.upsert(task_id, status="STARTED", name=sender.name, args=sender.request.argsrepr,
+              kwargs=sender.request.kwargsrepr,
               routing_key=sender.request.delivery_info["routing_key"])
 
 
@@ -47,18 +51,24 @@ def task_retry_handler(sender=None, reason=None, request=None, einfo=None, **opt
   if isinstance(when, datetime):
     eta = when
   elif isinstance(when, int):
-    eta = datetime.utcnow() + timedelta(seconds=when)
+    eta = pytz.UTC.localize(datetime.utcnow()) + timedelta(seconds=when)
   Task.upsert(request.id, status="RETRY", name=sender.name, routing_key=request.delivery_info["routing_key"],
-              exception_type=str(reason), args=request.args, kwargs=request.kwargs, traceback=str(einfo),
-              date_done=datetime.utcnow(), eta=eta)
+              exception_type=str(reason), args=sender.request.argsrepr, kwargs=sender.request.kwargsrepr,
+              traceback=str(einfo),
+              date_done=pytz.UTC.localize(datetime.utcnow()), eta=eta)
 
 
 @task_success.connect
 @check_restricted_statuses(status="SUCCESS", task_name_getter=lambda x: x.name)
 def task_success_handler(sender=None, result=None, **opts):
+  try:
+    resultrepr = json.dumps(result)
+  except TypeError:
+    resultrepr = repr(result)
   Task.upsert(sender.request.id, status="SUCCESS", name=sender.name,
               routing_key=sender.request.delivery_info["routing_key"],
-              result=result, args=sender.request.args, kwargs=sender.request.kwargs, date_done=datetime.utcnow())
+              result=resultrepr, args=sender.request.argsrepr, kwargs=sender.request.kwargsrepr,
+              date_done=pytz.UTC.localize(datetime.utcnow()))
 
 
 @task_failure.connect
@@ -66,6 +76,6 @@ def task_success_handler(sender=None, result=None, **opts):
 def task_failure_handler(sender=None, exception=None, einfo=None, **opts):
   Task.upsert(sender.request.id, status="FAILURE", name=sender.name,
               routing_key=sender.request.delivery_info["routing_key"],
-              exception_type=einfo.type.__name__, traceback=str(einfo.traceback), args=sender.request.args,
-              kwargs=sender.request.kwargs,
-              date_done=datetime.utcnow())
+              exception_type=einfo.type.__name__, traceback=str(einfo.traceback), args=sender.request.argsrepr,
+              kwargs=sender.request.kwargsrepr,
+              date_done=pytz.UTC.localize(datetime.utcnow()))

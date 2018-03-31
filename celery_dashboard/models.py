@@ -1,12 +1,8 @@
-from datetime import datetime
-
 from celery import current_app
-from celery import states
 from celery.backends.database import session_cleanup
 from celery.backends.database.session import _after_fork_cleanup_session
 from celery.five import python_2_unicode_compatible
 import sqlalchemy as sa
-from sqlalchemy import PickleType
 from kombu.utils.compat import register_after_fork
 from sqlalchemy import create_engine
 from sqlalchemy.dialects.postgresql import JSONB
@@ -40,7 +36,7 @@ class SessionManager(object):
         engine = self._engines[dburi] = create_engine(dburi, **kwargs)
         return engine
     else:
-      return create_engine(dburi, poolclass=NullPool)
+      return create_engine(dburi, poolclass=NullPool, echo=kwargs.get("echo", False))
 
   def create_session(self, dburi, short_lived_sessions=False, **kwargs):
     engine = self.get_engine(dburi, **kwargs)
@@ -76,13 +72,13 @@ class Task(MyResultModelBase):
   status = sa.Column(sa.Text, index=True)
   name = sa.Column(sa.Text, default=None, index=True)
   routing_key = sa.Column(sa.String(50), default=None, index=True)
-  result = sa.Column(JSONB, nullable=True)
-  args = sa.Column(JSONB, nullable=True)
-  kwargs = sa.Column(JSONB, nullable=True)
+  result = sa.Column(sa.TEXT, nullable=True)
+  args = sa.Column(sa.TEXT, nullable=True)
+  kwargs = sa.Column(sa.TEXT, nullable=True)
   meta = sa.Column(JSONB, nullable=True)
-  date_done = sa.Column(sa.DateTime, nullable=True, index=True)
-  date_queued = sa.Column(sa.DateTime, nullable=True, index=True)
-  eta = sa.Column(sa.DateTime, nullable=True, index=True)
+  date_done = sa.Column(sa.DateTime(timezone=True), nullable=True, index=True)
+  date_queued = sa.Column(sa.DateTime(timezone=True), nullable=True, index=True)
+  eta = sa.Column(sa.DateTime(timezone=True), nullable=True, index=True)
   exception_type = sa.Column(sa.Text, default=None, index=True, nullable=True)
   traceback = sa.Column(sa.Text, nullable=True)
 

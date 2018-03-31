@@ -1,4 +1,4 @@
-from celery_dashboard.models import Task
+from .models import Task
 
 
 def set_progress(task, progress):

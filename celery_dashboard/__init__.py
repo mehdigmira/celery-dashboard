@@ -1,6 +1,6 @@
-from celery_dashboard.cleaning import dashboard_cleaning
-from celery_dashboard.models import SessionManager
-from celery_dashboard.signals import *
+from .cleaning import dashboard_cleaning
+from .models import SessionManager
+from .signals import *
 
 
 def init(celery_app, pg_db_uri, cleaning_thresholds=None):

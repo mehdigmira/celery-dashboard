@@ -1,7 +1,7 @@
 from celery.bin.base import Command
 
-from celery_dashboard import init
-from celery_dashboard.api.app import get_app
+from . import init
+from .api.app import get_app
 
 
 class CeleryDashboard(Command):

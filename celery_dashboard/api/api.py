@@ -2,11 +2,10 @@ import json
 
 from flask import Blueprint
 from flask import current_app
-from flask import render_template
 from flask import request
 from sqlalchemy import func
 
-from celery_dashboard.models import Task
+from ..models import Task
 
 api = Blueprint('api', __name__, url_prefix='/api')
 

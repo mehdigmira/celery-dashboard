@@ -6,8 +6,8 @@ from __future__ import unicode_literals
 from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 
-from celery_dashboard.api.static import static
-from celery_dashboard.api.api import api
+from ..api.static import static
+from ..api.api import api
 
 
 def get_app(celery_app):
