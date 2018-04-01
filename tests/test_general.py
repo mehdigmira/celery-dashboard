@@ -237,3 +237,24 @@ def test_only_store(celery_worker, x, y):
             assert task.meta is None
         else:
             assert task is None
+
+
+def test_revoked(celery_worker):
+    from .celery_app import div
+    from ..celery_dashboard.models import session_ctx_manager, Task
+
+    celery_worker.start()
+
+    # queue task
+    async_res = div.apply_async((20, 2), countdown=5)
+    time.sleep(2)
+
+    # revoke it
+    async_res.revoke()
+
+    # sleep until it is discarded by worker
+    time.sleep(5)
+
+    with session_ctx_manager() as session:
+        task = session.query(Task).one()
+        assert task.status == "REVOKED"

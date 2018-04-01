@@ -31,6 +31,9 @@ def prepare_models(engine):
         conn.execute("CREATE SCHEMA IF NOT EXISTS celery_jobs")
     MyResultModelBase.metadata.create_all(engine)
 
+    # this happens pre-fork, so we need to dispose the engine on the main process as well
+    engine.dispose()
+
 
 @python_2_unicode_compatible
 class Task(MyResultModelBase):

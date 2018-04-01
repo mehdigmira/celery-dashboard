@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 import pytz
 from celery import current_app
-from celery.signals import before_task_publish, task_prerun, task_retry, task_success, task_failure
+from celery.signals import before_task_publish, task_prerun, task_retry, task_success, task_failure, task_revoked
 
 from .models import Task
 
@@ -80,3 +80,11 @@ def task_failure_handler(sender=None, exception=None, einfo=None, **opts):
                 kwargs=sender.request.kwargsrepr,
                 date_done=pytz.UTC.localize(datetime.utcnow()))
 
+
+@task_revoked.connect
+@check_restricted_statuses(status="REVOKED", task_name_getter=lambda x: x.name)
+def task_revoked_handler(sender=None, request=None, **opts):
+    Task.upsert(request.id, status="REVOKED", name=sender.name,
+                routing_key=request.delivery_info["routing_key"],
+                args=request.argsrepr, kwargs=request.kwargsrepr,
+                date_done=pytz.UTC.localize(datetime.utcnow()))

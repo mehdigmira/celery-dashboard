@@ -39,7 +39,7 @@ class CeleryWorker(object):
         if not self.with_backend:
             suffix = "_no_backend"
         self.worker_process = subprocess.Popen(["celery", "-A", "app.tests.celery_app%s" % suffix,
-                                                "worker", "-l", "DEBUG"],
+                                                "worker", "-l", "DEBUG", "--concurrency=1"],
                                                cwd="/", shell=False, env=env)
         self.started = True
 

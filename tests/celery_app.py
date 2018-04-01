@@ -7,7 +7,7 @@ from ..celery_dashboard import init
 from ..celery_dashboard.utils import set_progress
 
 celery_app = Celery('test_app', broker='redis://localhost', backend='redis://localhost')
-celery_app.conf.update(accept_content = ['json', 'pickle'])
+celery_app.conf.update(accept_content = ['json', 'pickle'], worker_prefetch_multiplier=1)
 
 init(celery_app, "postgresql://docker:docker@localhost:5432/docker", db_echo="debug")
 
