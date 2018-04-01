@@ -11,11 +11,11 @@ from sqlalchemy import create_engine
 
 
 class CeleryWorker(object):
-    def __init__(self, with_backend=True):
+    def __init__(self, app_name="celery_app"):
         self.flush_db()
         self.flush_redis()
         self.started = False
-        self.with_backend = with_backend
+        self.app_name = app_name
 
     def flush_redis(self):
         redis_instance = StrictRedis()
@@ -27,7 +27,7 @@ class CeleryWorker(object):
             session.execute("TRUNCATE celery_jobs.tasks")
             session.commit()
 
-    def start(self):
+    def start(self, beat=False, queue="celery"):
         self.flush_db()
         self.flush_redis()
         self.stop()
@@ -35,12 +35,10 @@ class CeleryWorker(object):
         env = os.environ.copy()
         env["C_FORCE_ROOT"] = 'true'
 
-        suffix = ""
-        if not self.with_backend:
-            suffix = "_no_backend"
-        self.worker_process = subprocess.Popen(["celery", "-A", "app.tests.celery_app%s" % suffix,
-                                                "worker", "-l", "DEBUG", "--concurrency=1"],
-                                               cwd="/", shell=False, env=env)
+        cmd = ["celery", "-A", "app.tests.%s" % self.app_name, "worker", "-l", "DEBUG", "-Q", queue]
+        if beat:
+            cmd.append("-B")
+        self.worker_process = subprocess.Popen(cmd, cwd="/", shell=False, env=env)
         self.started = True
 
     def stop(self):
@@ -68,7 +66,7 @@ class CeleryWorker(object):
 @pytest.yield_fixture
 @pytest.fixture(scope="function")
 def celery_worker():
-    celery_worker = CeleryWorker(with_backend=True)
+    celery_worker = CeleryWorker()
     yield celery_worker
     celery_worker.stop()
 
@@ -76,7 +74,15 @@ def celery_worker():
 @pytest.yield_fixture
 @pytest.fixture(scope="function")
 def celery_worker_no_backend():
-    celery_worker = CeleryWorker(with_backend=False)
+    celery_worker = CeleryWorker(app_name="celery_app_no_backend")
+    yield celery_worker
+    celery_worker.stop()
+
+
+@pytest.yield_fixture
+@pytest.fixture(scope="function")
+def celery_worker_fast_cleaning():
+    celery_worker = CeleryWorker(app_name="celery_app_fast_cleaning")
     yield celery_worker
     celery_worker.stop()
 

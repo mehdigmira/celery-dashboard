@@ -17,19 +17,13 @@ def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     # cleaning
     if not cleaning_thresholds:
         cleaning_thresholds = {}
+    # if task hasn't finished after 3600s assume worker has been killed and couldn't send a signal
     if "STARTED" not in cleaning_thresholds:
         cleaning_thresholds["STARTED"] = 3600
     if "SUCCESS" not in cleaning_thresholds:
         cleaning_thresholds["SUCCESS"] = 3600 * 4
     celery_app.conf.dashboard_pg_uri = pg_db_uri
-    celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
+    dashboard_cleaning_task = celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
     for status, threshold in cleaning_thresholds.items():
-        celery_app.conf.beat_schedule['clean-%s-tasks' % status.lower()] = {
-            'task': 'dashboard_cleaning',
-            'schedule': threshold,
-            'args': (status, threshold),
-            'options': {
-                'queue': 'celery_dashboard',
-                'expires': 10 * 60
-            }
-        }
+        celery_app.add_periodic_task(threshold, dashboard_cleaning_task.s(status, threshold),
+                                     options={'queue': 'celery_dashboard', 'expires': 10 * 60})
