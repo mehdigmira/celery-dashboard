@@ -32,8 +32,13 @@ def div(x, y):
     return x / y
 
 
-@celery_app.task(name="long_running")
+@celery_app.task(name="fast_divide", only_store=["FAILURE"])
+def fast_div(x, y):
+    return x / y
+
+
+@celery_app.task(name="long_running", bind=True)
 def long_running(self):
-    for x in range(100):
+    for x in range(5):
+        set_progress(self, x * 25)
         sleep(1)
-        set_progress(self, x + 1)

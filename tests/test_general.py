@@ -139,6 +139,7 @@ def test_failing_job(celery_worker):
         assert task.eta <= now
         assert task.date_done <= now
 
+
 @pytest.mark.parametrize(("task_arg", "case"), [(useless_function, 0), ({"x": 1}, 1)])
 def test_successful_job_with_pickle(celery_worker_no_backend, task_arg, case):
     celery_worker_no_backend.start()
@@ -164,6 +165,7 @@ def test_successful_job_with_pickle(celery_worker_no_backend, task_arg, case):
         assert task.traceback is None
         assert task.date_queued <= pytz.UTC.localize(datetime.datetime.utcnow())
 
+
 @pytest.mark.parametrize(("with_eta", ), [(True, ), (False, )])
 def test_retry_job(celery_worker, with_eta):
     celery_worker.start()
@@ -186,3 +188,52 @@ def test_retry_job(celery_worker, with_eta):
         assert "Retry" in task.exception_type
         assert '/app/tests/celery_app.py' in task.traceback
         assert task.date_queued <= pytz.UTC.localize(datetime.datetime.utcnow())
+
+
+def test_long_running(celery_worker):
+    celery_worker.start()
+    from .celery_app import long_running, celery_app
+    from ..celery_dashboard.models import session_ctx_manager, Task
+    from .utils import wait_for_task_to_run
+    async_res = long_running.apply_async()
+    time.sleep(3)
+    with session_ctx_manager() as session:
+        task = session.query(Task).one()
+        assert task.status == "STARTED"
+        assert task.routing_key == "celery"
+        assert task.args == "()"
+        assert task.result is None
+        assert task.kwargs == "{}"
+        assert "progress" in task.meta
+        assert task.exception_type is None
+        assert task.traceback is None
+        assert task.date_queued <= pytz.UTC.localize(datetime.datetime.utcnow())
+        assert task.date_started <= pytz.UTC.localize(datetime.datetime.utcnow())
+        assert task.date_done is None
+
+        wait_for_task_to_run(async_res)
+
+        session.expire(task)
+        session.refresh(task)
+
+        assert task.meta["progress"] == 100
+
+
+@pytest.mark.parametrize(("x", "y"), [(20, 2), (20, 0)])
+def test_only_store(celery_worker, x, y):
+    celery_worker.start()
+    from .celery_app import fast_div, celery_app
+    from ..celery_dashboard.models import session_ctx_manager, Task
+    from .utils import wait_for_task_to_run
+    wait_for_task_to_run(fast_div.apply_async((x, y)))
+    with session_ctx_manager() as session:
+        task = session.query(Task).first()
+        if y == 0:
+            assert task.status == "FAILURE"
+            assert task.routing_key == "celery"
+            assert task.args == "(20, 0)"
+            assert task.result is None
+            assert task.kwargs == "{}"
+            assert task.meta is None
+        else:
+            assert task is None

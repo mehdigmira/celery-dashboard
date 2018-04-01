@@ -4,6 +4,7 @@ from sqlalchemy import and_
 
 from .models import session_ctx_manager, Task
 
+
 def dashboard_cleaning(status, threshold):
     tasks_table = Task.__table__
     stm = (tasks_table

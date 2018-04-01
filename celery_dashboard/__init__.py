@@ -9,7 +9,7 @@ from .signals import *
 
 def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     # setup db
-    db_engine = create_engine(pg_db_uri, client_encoding='utf8', convert_unicode=True, echo=db_echo, isolation_level="READ COMMITTED")
+    db_engine = create_engine(pg_db_uri, client_encoding='utf8', convert_unicode=True, echo=db_echo)
     SessionMaker.configure(bind=db_engine)
     prepare_models(db_engine)
     register_after_fork(db_engine, lambda engine: engine.dispose())
@@ -24,12 +24,12 @@ def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     celery_app.conf.dashboard_pg_uri = pg_db_uri
     celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
     for status, threshold in cleaning_thresholds.items():
-      celery_app.conf.beat_schedule['clean-%s-tasks' % status.lower()] = {
-          'task': 'dashboard_cleaning',
-          'schedule': threshold,
-          'args': (status, threshold),
-          'options': {
-              'queue': 'celery_dashboard',
-              'expires': 10 * 60
-          }
-      }
+        celery_app.conf.beat_schedule['clean-%s-tasks' % status.lower()] = {
+            'task': 'dashboard_cleaning',
+            'schedule': threshold,
+            'args': (status, threshold),
+            'options': {
+                'queue': 'celery_dashboard',
+                'expires': 10 * 60
+            }
+        }
