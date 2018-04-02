@@ -1,7 +1,15 @@
+import json
+
 from .models import Task
 
 
 def set_progress(task, progress):
     request = task.request
-    Task.upsert(request.id, status="STARTED", name=task.name, args=request.argsrepr, kwargs=request.kwargsrepr,
+    Task.upsert(request.id, status="STARTED", name=task.name, args=dump(request.args), kwargs=dump(request.kwargs),
                 routing_key=request.delivery_info["routing_key"], meta={"progress": progress})
+
+def dump(data):
+    try:
+        return json.dumps(data)
+    except TypeError:
+        return repr(data)

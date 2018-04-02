@@ -1,5 +1,7 @@
 FROM ubuntu
 
+ARG celery_version
+
 # Add the PostgreSQL PGP key to verify their Debian packages.
 # It should be the same key as https://www.postgresql.org/media/keys/ACCC4CF8.asc
 RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
@@ -64,18 +66,21 @@ USER root
 RUN pip install --upgrade --ignore-installed pip
 RUN pip3 install --upgrade --ignore-installed pip
 
-RUN pip install wheel
+RUN pip2.7 install wheel
 RUN pip3 install wheel
 
 ADD requirements.txt /app/requirements.txt
 ADD requirements-dev.txt /app/requirements-dev.txt
 
+RUN pip2.7 install celery==$celery_version
+RUN pip3 install celery==$celery_version
+
 RUN pip3 install -r /app/requirements.txt && \
     pip3 install -r /app/requirements-dev.txt && \
 	rm -rf ~/.cache
 
-RUN pip install -r /app/requirements.txt && \
-    pip install -r /app/requirements-dev.txt && \
+RUN pip2.7 install -r /app/requirements.txt && \
+    pip2.7 install -r /app/requirements-dev.txt && \
 	rm -rf ~/.cache
 
 WORKDIR /app

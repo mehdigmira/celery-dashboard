@@ -17,7 +17,7 @@ def test_cleaning(celery_worker_fast_cleaning):
         assert len(tasks) == 2
         assert set([task.status for task in tasks]) == {"SUCCESS", "FAILURE"}
 
-    time.sleep(10)
+    time.sleep(15)
 
     with session_ctx_manager() as session:
         tasks = session.query(Task).filter(Task.name == "divide").all()

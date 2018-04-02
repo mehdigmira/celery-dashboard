@@ -4,14 +4,18 @@ from sqlalchemy import create_engine
 
 from .cleaning import dashboard_cleaning
 from .models import SessionMaker, prepare_models
-from .signals import *
 
 
 def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     # setup db
     db_engine = create_engine(pg_db_uri, client_encoding='utf8', convert_unicode=True, echo=db_echo)
     SessionMaker.configure(bind=db_engine)
-    prepare_models(db_engine)
+    prepared = prepare_models(db_engine)
+    if not prepared:
+        return
+
+    from .signals import task_sent_handler, task_started_handler, task_retry_handler, task_success_handler, \
+        task_failure_handler, task_revoked_handler
     register_after_fork(db_engine, lambda engine: engine.dispose())
 
     # cleaning
@@ -23,7 +27,20 @@ def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     if "SUCCESS" not in cleaning_thresholds:
         cleaning_thresholds["SUCCESS"] = 3600 * 4
     celery_app.conf.dashboard_pg_uri = pg_db_uri
-    dashboard_cleaning_task = celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
+    celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
+
+    from celery import __version__ as celery_version
     for status, threshold in cleaning_thresholds.items():
-        celery_app.add_periodic_task(threshold, dashboard_cleaning_task.s(status, threshold),
-                                     options={'queue': 'celery_dashboard', 'expires': 10 * 60})
+        if celery_version.startswith('4'):
+            beat_schedule_name = "beat_schedule"
+        else:
+            beat_schedule_name = "CELERYBEAT_SCHEDULE"
+        celery_app.conf.CELERYBEAT_SCHEDULE['clean-%s-tasks' % status.lower()] = {
+            'task': 'dashboard_cleaning',
+            'schedule': threshold,
+            'args': (status, threshold),
+            'options': {
+                'queue': 'celery_dashboard',
+                'expires': 10 * 60
+            }
+        }

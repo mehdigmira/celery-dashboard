@@ -19,7 +19,13 @@ class CeleryWorker(object):
 
     def flush_redis(self):
         redis_instance = StrictRedis()
-        redis_instance.flushall()
+
+        all_keys = redis_instance.keys("*")
+
+        # with celery 3 if we use flushall, we'll have errors concerning missing kombu bindings
+        for key in all_keys:
+            if "_kombu" not in str(key):
+                redis_instance.delete(key)
 
     def flush_db(self):
         from ..celery_dashboard.models import session_ctx_manager

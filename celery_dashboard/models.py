@@ -1,6 +1,6 @@
 from contextlib import contextmanager
+from logging import getLogger
 
-from celery.five import python_2_unicode_compatible
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert
@@ -11,6 +11,7 @@ MyResultModelBase = declarative_base()
 
 SessionMaker = sessionmaker()
 
+logger = getLogger(__name__)
 
 @contextmanager
 def session_ctx_manager():
@@ -28,14 +29,19 @@ def session_ctx_manager():
 
 def prepare_models(engine):
     with engine.begin() as conn:
+        pg_version = list(conn.execute("SELECT version();"))[0][0].split(" ")[1]
+        pg_version_numbers = list(map(int, pg_version.split(".")))
+        if pg_version_numbers[0] < 9 or (pg_version_numbers[0] == 9 and pg_version_numbers[1] < 5):
+            logger.error("You should have a PostgreSQL version >= 9.5")
+            return
         conn.execute("CREATE SCHEMA IF NOT EXISTS celery_jobs")
     MyResultModelBase.metadata.create_all(engine)
 
     # this happens pre-fork, so we need to dispose the engine on the main process as well
     engine.dispose()
+    return True
 
 
-@python_2_unicode_compatible
 class Task(MyResultModelBase):
     """Task result/status."""
 

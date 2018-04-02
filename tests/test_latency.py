@@ -25,7 +25,7 @@ def test_publisher_latency(celery_worker):
         task = session.query(Task).one()
         assert task.status == "SUCCESS"
         assert task.routing_key == "celery"
-        assert task.args == "(20, 2)"
+        assert (task.args == "(20, 2)" or task.args == "[20, 2]")
         assert task.result == "10.0"
         assert task.kwargs == "{}"
         assert task.meta is None

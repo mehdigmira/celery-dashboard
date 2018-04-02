@@ -22,6 +22,7 @@ def test_queue_general(celery_worker, queue, countdown):
             apply_async_kwargs["countdown"] = countdown
         else:
             apply_async_kwargs["eta"] = countdown + datetime.datetime.utcnow()
+
     div.apply_async((20, 2), **apply_async_kwargs)
 
     with session_ctx_manager() as session:
@@ -29,7 +30,7 @@ def test_queue_general(celery_worker, queue, countdown):
         assert task.status == "QUEUED"
         assert task.routing_key == queue if queue else "celery"
         assert task.name == "divide"
-        assert task.args == '(20, 2)'
+        assert (task.args == '(20, 2)' or task.args == '[20, 2]')
         assert task.kwargs == '{}'
         assert task.result is None
         assert task.meta is None
@@ -89,7 +90,7 @@ def test_successful_job(celery_worker, countdown):
                 assert task.status == "SUCCESS"
                 assert task.routing_key == "celery"
                 assert task.name == "divide"
-                assert task.args == '(20, 2)'
+                assert (task.args == '(20, 2)' or task.args == '[20, 2]')
                 assert task.kwargs == '{}'
                 assert task.result == '10.0'
                 assert task.meta is None
@@ -103,7 +104,7 @@ def test_successful_job(celery_worker, countdown):
                 assert task.status == "QUEUED"
                 assert task.routing_key == "celery"
                 assert task.name == "divide"
-                assert task.args == '(20, 2)'
+                assert (task.args == '(20, 2)' or task.args == '[20, 2]')
                 assert task.kwargs == '{}'
                 assert task.result is None
                 assert task.meta is None
@@ -129,7 +130,7 @@ def test_failing_job(celery_worker):
         assert task.status == "FAILURE"
         assert task.routing_key == "celery"
         assert task.name == "divide"
-        assert task.args == '(20, 0)'
+        assert (task.args == '(20, 0)' or task.args == '[20, 0]')
         assert task.kwargs == '{}'
         assert task.result is None
         assert task.meta is None
@@ -157,7 +158,7 @@ def test_successful_job_with_pickle(celery_worker_no_backend, task_arg, case):
             assert "(<function " in task.args
             assert "<function useless_function" in task.result
         else:
-            assert task.args == "({'x': 1},)"
+            assert (task.args == "({'x': 1},)" or task.args == '[{"x": 1}]')
             assert task.result == '{"x": 1}'
         assert task.kwargs == '{}'
         assert task.meta is None
@@ -181,9 +182,9 @@ def test_retry_job(celery_worker, with_eta):
         task = session.query(Task).one()
         assert task.status == "RETRY"
         assert task.routing_key == "celery"
-        assert task.args == "()"
+        assert (task.args == "()" or task.args == "[]")
         assert task.result is None
-        assert task.kwargs == "{'countdown': 5}"
+        assert (task.kwargs == "{'countdown': 5}" or task.kwargs == '{"countdown": 5}')
         assert task.meta is None
         assert "Retry" in task.exception_type
         assert '/app/tests/celery_app.py' in task.traceback
@@ -201,7 +202,7 @@ def test_long_running(celery_worker):
         task = session.query(Task).one()
         assert task.status == "STARTED"
         assert task.routing_key == "celery"
-        assert task.args == "()"
+        assert (task.args == "()" or task.args == "[]")
         assert task.result is None
         assert task.kwargs == "{}"
         assert "progress" in task.meta
@@ -231,7 +232,7 @@ def test_only_store(celery_worker, x, y):
         if y == 0:
             assert task.status == "FAILURE"
             assert task.routing_key == "celery"
-            assert task.args == "(20, 0)"
+            assert (task.args == "(20, 0)"or task.args == '[20, 0]')
             assert task.result is None
             assert task.kwargs == "{}"
             assert task.meta is None
