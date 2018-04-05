@@ -1,8 +1,7 @@
-import threading
 from datetime import datetime
-import time
 import pytz
 from celery.signals import before_task_publish
+
 
 def test_publisher_latency(celery_worker):
     celery_worker.start()

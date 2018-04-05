@@ -1,6 +1,5 @@
 import time
 
-from celery.result import AsyncResult
 from celery.backends.base import DisabledBackend
 from redis import StrictRedis
 

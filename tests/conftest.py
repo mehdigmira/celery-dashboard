@@ -10,11 +10,59 @@ from redis import StrictRedis
 from sqlalchemy import create_engine
 
 
-class CeleryWorker(object):
+class ProcessFixture(object):
+    def __init__(self, *args, **kwargs):
+        self.started = False
+
+    def stop(self):
+        if self.started:
+            self.kill()
+            self.process = None
+            self.started = False
+
+    def kill(self):
+        os.kill(self.process.pid, signal.SIGTERM)
+        for _ in range(2000):
+            if self.process_is_killed():
+                return
+            time.sleep(0.01)
+        assert False, "Could not kill celery processes"
+
+    def process_is_killed(self):
+        try:
+            if psutil.Process(self.process.pid).status() == 'zombie':
+                return True
+        except psutil.NoSuchProcess:
+            return True
+
+    def start_process(self, cmd, env=None):
+        popen_kwargs = {"cwd": "/", "shell": False}
+        if env:
+            popen_kwargs["env"] = env
+        self.process = subprocess.Popen(cmd, **popen_kwargs)
+        self.started = True
+
+
+class Api(ProcessFixture):
+    def __init__(self):
+        ProcessFixture.__init__(self)
+        self.api_url = "http://localhost:5000/api/"
+
+    def start(self):
+        self.stop()
+
+        env = os.environ.copy()
+        env["C_FORCE_ROOT"] = 'true'
+
+        cmd = ["celery", "-A", "app.tests.celery_app", "dashboard"]
+        self.start_process(cmd, env=env)
+
+
+class CeleryWorker(ProcessFixture):
     def __init__(self, app_name="celery_app"):
+        ProcessFixture.__init__(self)
         self.flush_db()
         self.flush_redis()
-        self.started = False
         self.app_name = app_name
 
     def flush_redis(self):
@@ -44,29 +92,7 @@ class CeleryWorker(object):
         cmd = ["celery", "-A", "app.tests.%s" % self.app_name, "worker", "-l", "DEBUG", "-Q", queue]
         if beat:
             cmd.append("-B")
-        self.worker_process = subprocess.Popen(cmd, cwd="/", shell=False, env=env)
-        self.started = True
-
-    def stop(self):
-        if self.started:
-            self.kill()
-            self.worker_process = None
-            self.started = False
-
-    def kill(self):
-        os.kill(self.worker_process.pid, signal.SIGTERM)
-        for _ in range(2000):
-            if self.process_is_killed():
-                return
-            time.sleep(0.01)
-        assert False, "Could not kill celery processes"
-
-    def process_is_killed(self):
-        try:
-            if psutil.Process(self.worker_process.pid).status() == 'zombie':
-                return True
-        except psutil.NoSuchProcess:
-            return True
+        self.start_process(cmd, env=env)
 
 
 @pytest.yield_fixture
@@ -75,6 +101,14 @@ def celery_worker():
     celery_worker = CeleryWorker()
     yield celery_worker
     celery_worker.stop()
+
+
+@pytest.yield_fixture
+@pytest.fixture(scope="function")
+def api():
+    api = Api()
+    yield api
+    api.stop()
 
 
 @pytest.yield_fixture
@@ -106,5 +140,10 @@ def ensure_postgresql():
 @pytest.fixture(scope="module", autouse=True)
 def ensure_redis():
     subprocess.call(["/etc/init.d/redis-server", "start"])
+
+
+@pytest.fixture(scope="module", autouse=True)
+def install():
+    subprocess.call(["pip", "install", "-e", "."], cwd="/app")
 
 
