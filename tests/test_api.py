@@ -77,7 +77,10 @@ def test_filtered_tasks(celery_worker, api, action, filters, expected_count):
         requests.delete(api.api_url + "tasks", data=json.dumps(filters_to_request),
                         headers={'content-type': 'application/json'})
         tasks = requests.get(route).json()
-        assert tasks["count"] == 0
+        if "task" in filters:
+            assert tasks["count"] == 2
+        elif "status" not in filters and "queue" not in filters:
+            assert tasks["count"] == 0
     else:
         requests.post(api.api_url + "tasks", data=json.dumps(filters_to_request),
                       headers={'content-type': 'application/json'})

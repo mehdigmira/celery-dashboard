@@ -26,10 +26,6 @@
     beforeRouteLeave (to, from, next) {
       EventBus.$emit("workerspolling", false)
       next()
-    },
-    beforeRouteEnter (to, from, next) {
-      EventBus.$emit("workerspolling", true)
-      next()
     }
   }
 </script>

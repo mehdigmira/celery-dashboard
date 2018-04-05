@@ -26,10 +26,6 @@
     beforeRouteLeave (to, from, next) {
       EventBus.$emit("queuespolling", false)
       next()
-    },
-    beforeRouteEnter (to, from, next) {
-      EventBus.$emit("queuespolling", true)
-      next()
     }
   }
 </script>

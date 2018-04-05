@@ -104,7 +104,7 @@ def get_queues():
         sub_dict[status] = count
         sub_dict["ALL"] += count
 
-    return json.dumps({"result": by_queue.values()})
+    return json.dumps({"result": list(by_queue.values())})
 
 
 @api.route("/workers")

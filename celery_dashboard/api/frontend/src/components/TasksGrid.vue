@@ -119,7 +119,7 @@
     template: `
               <div>
                 <pre class="simple-text">{{ getDateText() }}</pre>
-                <v-tooltip right v-if="(params.data.meta || {}).progress">
+                <v-tooltip right v-if="(params.data.meta || {}).progress && (params.data.meta || {}).progress < 100">
                   <v-progress-circular :value="params.data.meta.progress" :rotate="-90" color="lime" slot="activator"></v-progress-circular>
                   <span>Completed {{ params.data.meta.progress }}%</span>
                 </v-tooltip>
@@ -210,7 +210,7 @@
       createColDefs() {
         function toText(params) {
             if (params.value !== undefined) {
-              return `<pre class="json-formatted">${JSON.stringify(params.data[params.colDef.field], null, 2)}</pre>`;
+              return `<pre class="json-formatted">${params.data[params.colDef.field]}</pre>`;
             }
         }
         return [
