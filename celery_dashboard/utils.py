@@ -8,6 +8,7 @@ def set_progress(task, progress):
     Task.upsert(request.id, status="STARTED", name=task.name, args=dump(request.args), kwargs=dump(request.kwargs),
                 routing_key=request.delivery_info["routing_key"], meta={"progress": progress})
 
+
 def dump(data):
     try:
         return json.dumps(data)

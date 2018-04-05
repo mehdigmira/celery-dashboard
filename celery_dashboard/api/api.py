@@ -71,8 +71,20 @@ def tasks():
         to_rm = []
         for task in q.yield_per(1000):
             to_rm.append(task.task_id)
-            current_app.celery_app.send_task(task.name, args=task.args or [], kwargs=task.kwargs or {},
-                                             queue=task.routing_key or "celery")
+            args = task.args or []
+            kwargs = task.kwargs or {}
+            try:
+                if args:
+                    if args.startswith("(") and args.endswith(")"):
+                        args = "[" + args[1:-1] + "]"
+                    args = json.loads(args)
+                if kwargs:
+                    kwargs = json.loads(kwargs)
+            # args or kwargs were not jsonified, we do not requeue this kind of tasks
+            # because that would imply pickling the arguments and it would be insecure
+            except ValueError:
+                continue
+            current_app.celery_app.send_task(task.name, args=args, kwargs=kwargs, queue=task.routing_key or "celery")
             if len(to_rm) > 1000:
                 current_app.db.session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
                 to_rm = []

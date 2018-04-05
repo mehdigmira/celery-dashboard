@@ -13,6 +13,7 @@ SessionMaker = sessionmaker()
 
 logger = getLogger(__name__)
 
+
 @contextmanager
 def session_ctx_manager():
     session = SessionMaker()
