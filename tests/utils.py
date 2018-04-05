@@ -18,6 +18,7 @@ def wait_for_task_to_run(task, queue="celery"):
         except Exception:
             pass
         time.sleep(0.5)
+    return task
 
 
 def useless_function():

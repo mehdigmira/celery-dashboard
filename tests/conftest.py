@@ -44,9 +44,10 @@ class ProcessFixture(object):
 
 
 class Api(ProcessFixture):
-    def __init__(self):
+    def __init__(self, app_name="celery_app"):
         ProcessFixture.__init__(self)
         self.api_url = "http://localhost:5000/api/"
+        self.app_name = app_name
 
     def start(self):
         self.stop()
@@ -54,7 +55,7 @@ class Api(ProcessFixture):
         env = os.environ.copy()
         env["C_FORCE_ROOT"] = 'true'
 
-        cmd = ["celery", "-A", "app.tests.celery_app", "dashboard"]
+        cmd = ["celery", "-A", "app.tests.%s" % self.app_name, "dashboard"]
         self.start_process(cmd, env=env)
 
 
@@ -117,6 +118,14 @@ def celery_worker_no_backend():
     celery_worker = CeleryWorker(app_name="celery_app_no_backend")
     yield celery_worker
     celery_worker.stop()
+
+
+@pytest.yield_fixture
+@pytest.fixture(scope="function")
+def api_no_backend():
+    api = Api(app_name="celery_app_no_backend")
+    yield api
+    api.stop()
 
 
 @pytest.yield_fixture

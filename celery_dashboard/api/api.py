@@ -1,11 +1,12 @@
 import json
 
-from flask import Blueprint
+from flask import Blueprint, abort
 from flask import current_app
 from flask import request
 from sqlalchemy import func
 
 from ..models import Task
+from ..utils import cancel_tasks, requeue_tasks
 
 api = Blueprint('api', __name__, url_prefix='/api')
 
@@ -43,9 +44,8 @@ def tasks():
     if "taskId" in data:
         q = q.filter(Task.task_id == data["taskId"])
 
-    count = q.count()
-
     if request.method == "GET":
+        count = q.count()
         # add sorting here
         sorts = data.get("sort") or ""
         if sorts:
@@ -62,34 +62,11 @@ def tasks():
 
         return json.dumps({"result": result, "count": count})
     elif request.method == "DELETE":
-        for task in q.yield_per(1000):
-            current_app.celery_app.control.revoke(task.task_id)
-        q.delete()
+        count = cancel_tasks(q.yield_per(1000), current_app.db.session)
         current_app.db.session.commit()
         return json.dumps({"count": count})
     elif request.method == "POST":
-        to_rm = []
-        for task in q.yield_per(1000):
-            to_rm.append(task.task_id)
-            args = task.args or []
-            kwargs = task.kwargs or {}
-            try:
-                if args:
-                    if args.startswith("(") and args.endswith(")"):
-                        args = "[" + args[1:-1] + "]"
-                    args = json.loads(args)
-                if kwargs:
-                    kwargs = json.loads(kwargs)
-            # args or kwargs were not jsonified, we do not requeue this kind of tasks
-            # because that would imply pickling the arguments and it would be insecure
-            except ValueError:
-                continue
-            current_app.celery_app.send_task(task.name, args=args, kwargs=kwargs, queue=task.routing_key or "celery")
-            if len(to_rm) > 1000:
-                current_app.db.session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
-                to_rm = []
-        if to_rm:
-            current_app.db.session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
+        count = requeue_tasks(q.yield_per(1000), current_app.db.session)
         current_app.db.session.commit()
         return json.dumps({"count": count})
 
@@ -97,8 +74,7 @@ def tasks():
 @api.route("/task/<task_id>/revoke")
 @with_task
 def revoke_task(task):
-    current_app.celery_app.control.revoke(task.task_id)
-    current_app.db.session.delete(task)
+    cancel_tasks([task], current_app.db.session)
     current_app.db.session.commit()
 
     return json.dumps({"message": "ok"})
@@ -107,9 +83,8 @@ def revoke_task(task):
 @api.route("/task/<task_id>/requeue")
 @with_task
 def requeue_task(task):
-    current_app.celery_app.send_task(task.name, args=task.args or [], kwargs=task.kwargs or {},
-                                     queue=task.routing_key or "celery")
-    current_app.db.session.delete(task)
+    if not requeue_tasks([task], current_app.db.session):
+        abort(400)
     current_app.db.session.commit()
 
     return json.dumps({"message": "ok"})
