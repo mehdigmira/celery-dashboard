@@ -4,10 +4,6 @@ from flask import request, Response, current_app
 
 def check_auth(username, password):
     conf = current_app.celery_app.conf
-
-    if not username or not password:
-        return True
-
     return username == conf.dashboard_username and password == conf.dashboard_password
 
 
@@ -23,8 +19,10 @@ def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
+        conf = current_app.celery_app.conf
+        if conf.dashboard_username and conf.dashboard_password:
+            if not auth or not check_auth(auth.username, auth.password):
+                return authenticate()
         return f(*args, **kwargs)
 
     return decorated

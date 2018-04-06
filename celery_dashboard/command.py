@@ -11,4 +11,4 @@ class CeleryDashboard(Command):
 
     def run(self, port=5000, **kwargs):
         flask_app = get_app(self.app)
-        flask_app.run(host="0.0.0.0", port=port, threaded=True)
+        flask_app.run(host="0.0.0.0", port=port, processes=5)

@@ -70,7 +70,7 @@ def test_filtered_tasks(celery_worker, api, action, filters, expected_count):
     if "taskId" in filters:
         filters_to_request = {"taskId": filters["taskId"](wait_for)}
 
-    route = api.api_url + "tasks?%s=%s" % (filters_to_request.keys()[0], filters_to_request.values()[0])
+    route = api.api_url + "tasks?%s=%s" % (list(filters_to_request.keys())[0], list(filters_to_request.values())[0])
     tasks = requests.get(route).json()
     assert tasks["count"] == expected_count
     if action == "cancel":

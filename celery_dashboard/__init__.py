@@ -37,7 +37,7 @@ def init(celery_app, pg_db_uri, username=None, password=None, cleaning_threshold
             beat_schedule_name = "beat_schedule"
         else:
             beat_schedule_name = "CELERYBEAT_SCHEDULE"
-        celery_app.conf.CELERYBEAT_SCHEDULE['clean-%s-tasks' % status.lower()] = {
+        getattr(celery_app.conf, beat_schedule_name)['clean-%s-tasks' % status.lower()] = {
             'task': 'dashboard_cleaning',
             'schedule': threshold,
             'args': (status, threshold),
