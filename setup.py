@@ -11,7 +11,7 @@ def get_requirements():
 
 setup(
   name='celery-dashboard',
-  version='0.1',
+  version='0.0.1',
   entry_points={
     'celery.commands': [
       'dashboard = celery_dashboard.command:CeleryDashboard',
