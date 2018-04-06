@@ -103,4 +103,4 @@ beat_schedule = {
 
 celery_app.conf.CELERYBEAT_SCHEDULE = celery_app.conf.beat_schedule = beat_schedule
 
-init(celery_app, "postgresql://docker:docker@localhost:5432/docker", db_echo="debug")
+init(celery_app, "postgresql://docker:docker@localhost:5432/docker", "admin", "admin", db_echo="debug")

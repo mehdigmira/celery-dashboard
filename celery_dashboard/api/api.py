@@ -5,6 +5,7 @@ from flask import current_app
 from flask import request
 from sqlalchemy import func
 
+from ..auth import requires_auth
 from ..models import Task
 from ..utils import cancel_tasks, requeue_tasks
 
@@ -21,6 +22,7 @@ def with_task(func):
 
 
 @api.route("/tasks", methods=["GET", "DELETE", "POST"])
+@requires_auth
 def tasks():
     q = current_app.db.session.query(Task)
 
@@ -72,6 +74,7 @@ def tasks():
 
 
 @api.route("/task/<task_id>/revoke")
+@requires_auth
 @with_task
 def revoke_task(task):
     cancel_tasks([task], current_app.db.session)
@@ -81,6 +84,7 @@ def revoke_task(task):
 
 
 @api.route("/task/<task_id>/requeue")
+@requires_auth
 @with_task
 def requeue_task(task):
     if not requeue_tasks([task], current_app.db.session):
@@ -91,6 +95,7 @@ def requeue_task(task):
 
 
 @api.route("/queues")
+@requires_auth
 def get_queues():
     by_queue = {}
 
@@ -109,6 +114,7 @@ def get_queues():
 
 
 @api.route("/workers")
+@requires_auth
 def get_workers():
     workers = []
     for worker_name, stats in (current_app.celery_app.control.inspect().stats() or {}).items():
@@ -123,6 +129,7 @@ def get_workers():
 
 
 @api.route("/task", methods=["POST"])
+@requires_auth
 def create_task():
     data = request.get_json()
     task_id = current_app.celery_app.send_task(data["task"], kwargs=data["kwargs"], queue=data["queue"] or "celery")

@@ -106,7 +106,7 @@
                 return color;
             },
             revoke() {
-                fetch(`/api/task/${this.params.data.task_id}/revoke`).then((response) => {
+                fetch(`/api/task/${this.params.data.task_id}/revoke`, { credentials:"include" }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
                         let error = new Error(response.statusText);
@@ -121,7 +121,7 @@
                 });
             },
             requeue() {
-                fetch(`/api/task/${this.params.data.task_id}/requeue`).then((response) => {
+                fetch(`/api/task/${this.params.data.task_id}/requeue`, { credentials:"include" }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
                             text: "An error occurred",
@@ -213,7 +213,8 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(filters)
+                    body: JSON.stringify(filters),
+                    credentials:"include"
                 }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
@@ -246,7 +247,8 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(filters)
+                    body: JSON.stringify(filters),
+                    credentials:"include"
                 }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
@@ -319,7 +321,7 @@
                         let filters = self.getFiltersParams();
                         let apiRoute = `/api/tasks?start=${params.startRow}&end=${params.endRow}&sort=${sorts.join(',')}`
                         if (filters != "") apiRoute += `&${filters.join("&")}`;
-                        fetch(apiRoute).then((response) => {
+                        fetch(apiRoute, { credentials:"include" }).then((response) => {
                             api.hideOverlay();
                             return response.json()
                         })

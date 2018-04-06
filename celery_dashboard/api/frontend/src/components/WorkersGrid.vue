@@ -55,7 +55,7 @@
             poller() {
                 if (this.loading) return;
                 this.loading = true;
-                fetch("/api/workers").then((response) => {
+                fetch("/api/workers", { credentials:"include" }).then((response) => {
                     this.loading = false;
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {

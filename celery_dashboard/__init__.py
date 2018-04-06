@@ -6,7 +6,7 @@ from .cleaning import dashboard_cleaning
 from .models import SessionMaker, prepare_models
 
 
-def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
+def init(celery_app, pg_db_uri, username=None, password=None, cleaning_thresholds=None, db_echo=False):
     # setup db
     db_engine = create_engine(pg_db_uri, client_encoding='utf8', convert_unicode=True, echo=db_echo)
     SessionMaker.configure(bind=db_engine)
@@ -27,6 +27,8 @@ def init(celery_app, pg_db_uri, cleaning_thresholds=None, db_echo=False):
     if "SUCCESS" not in cleaning_thresholds:
         cleaning_thresholds["SUCCESS"] = 3600 * 4
     celery_app.conf.dashboard_pg_uri = pg_db_uri
+    celery_app.conf.dashboard_username = username
+    celery_app.conf.dashboard_password = password
     celery_app.task(name="dashboard_cleaning")(dashboard_cleaning)
 
     from celery import __version__ as celery_version

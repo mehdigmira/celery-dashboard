@@ -77,7 +77,8 @@
                             task: this.name,
                             queue: this.queue,
                             kwargs: kwargs
-                        })
+                        }),
+                        credentials:"include"
                     }).then((response) => {
                         if (response.status !== 200) {
                             EventBus.$emit('snackbar:show', {
