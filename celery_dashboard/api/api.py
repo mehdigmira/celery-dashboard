@@ -95,6 +95,7 @@ def get_queues():
     by_queue = {}
 
     q = (current_app.db.session.query(Task.status, Task.routing_key, func.count(Task.id))
+         .filter(Task.status.in_(["QUEUED", "STARTED", "RETRY"]))
          .group_by(Task.status, Task.routing_key))
 
     for row in q:
@@ -119,3 +120,10 @@ def get_workers():
             "pid": stats.get("pid")
         })
     return json.dumps({"result": workers})
+
+
+@api.route("/task", methods=["POST"])
+def create_task():
+    data = request.get_json()
+    task_id = current_app.celery_app.send_task(data["task"], kwargs=data["kwargs"], queue=data["queue"] or "celery")
+    return json.dumps({"taskId": str(task_id)})
