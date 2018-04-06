@@ -31,3 +31,4 @@ api:
 stack:
 	/etc/init.d/redis-server start
 	/etc/init.d/postgresql start
+	pip install -e .
