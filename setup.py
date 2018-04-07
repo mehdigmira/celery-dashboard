@@ -18,6 +18,6 @@ setup(
         ],
     },
     install_requires=get_requirements(),
-    packages=find_packages(),
+    packages=["celery_dashboard", "celery_dashboard.api"],
     include_package_data=True,
 )
