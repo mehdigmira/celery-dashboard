@@ -10,13 +10,14 @@ def get_requirements():
 
 
 setup(
-  name='celery-dashboard',
-  version='0.0.3',
-  entry_points={
-    'celery.commands': [
-      'dashboard = celery_dashboard.command:CeleryDashboard',
-    ],
-  },
-  install_requires=get_requirements(),
-  packages=find_packages()
+    name='celery-dashboard',
+    version='0.0.3',
+    entry_points={
+        'celery.commands': [
+            'dashboard = celery_dashboard.command:CeleryDashboard',
+        ],
+    },
+    install_requires=get_requirements(),
+    packages=find_packages(),
+    include_package_data=True,
 )
