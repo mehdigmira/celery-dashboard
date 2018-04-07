@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 
+import os
 from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 
@@ -24,6 +25,7 @@ def get_app(celery_app):
 
     @app.route("/")
     def index():
-        return send_from_directory("frontend/dist", "index.html")
+        dist_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend/dist")
+        return send_from_directory(dist_directory, "index.html")
 
     return app
