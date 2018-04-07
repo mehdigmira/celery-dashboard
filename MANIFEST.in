@@ -1,1 +1,2 @@
-recursive-include celery_dashboard *.js *.css *.html
+recursive-include celery_dashboard/api/frontend/dist *
+recursive-exclude tests *
