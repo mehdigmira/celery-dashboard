@@ -1,0 +1,1 @@
+recursive-include celery_dashboard *.js *.css *.html
