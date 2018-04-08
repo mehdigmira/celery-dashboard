@@ -90,3 +90,7 @@ EXPOSE 6379
 
 # dashboard
 EXPOSE 5555
+
+# fixes a bug with celery running under python 3.5
+# https://github.com/celery/billiard/issues/191
+RUN pip3 install billiard==3.5.0.2
