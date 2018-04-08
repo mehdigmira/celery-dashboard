@@ -20,6 +20,7 @@ It was built with two main goals:
 ![Image of Dashboard](https://image.ibb.co/iPWTMc/jobs_tab.png)
 ![Image of Dashboard](https://image.ibb.co/hifNgc/run_task.png)
 ![Image of Dashboard](https://image.ibb.co/dpiuSH/workers_tab.png)
+![Image of Dashboard](https://image.ibb.co/gG3pux/queues_tab.png)
 
 
 # Requirements & compatibility
