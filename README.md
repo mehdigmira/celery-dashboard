@@ -23,7 +23,6 @@ It was built with two main goals:
 ![Image of Dashboard](https://image.ibb.co/gG3pux/queues_tab.png)
 ![Image of Dashboard](https://image.ibb.co/mbh4SH/traceback.png)
 
-
 # Requirements & compatibility
 
 A PostgreSQL database >= 9.5 is required.
@@ -70,3 +69,4 @@ You can of course override this settings by passing the `cleaning_thresholds` pa
 All these tasks will be routed to the queue `celery_dashboard`.
 
 So you should have a beat schedule running (`celery -A <your_app> beat`) and a worker that processes tasks in the `celery_dashboard` queue (`celery -A <your_app> worker -Q celery_dashboard`)
+
