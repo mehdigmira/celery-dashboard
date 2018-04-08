@@ -6,6 +6,7 @@ import pytest
 import signal
 import time
 
+import sys
 from redis import StrictRedis
 from sqlalchemy import create_engine
 
@@ -90,7 +91,9 @@ class CeleryWorker(ProcessFixture):
         env = os.environ.copy()
         env["C_FORCE_ROOT"] = 'true'
 
-        cmd = ["celery", "-A", "app.tests.%s" % self.app_name, "worker", "-l", "DEBUG", "-Q", queue]
+        python_bin = "python%s" % sys.version_info[0]
+
+        cmd = [python_bin, "-m", "celery", "-A", "app.tests.%s" % self.app_name, "worker", "-l", "DEBUG", "-Q", queue]
         if beat:
             cmd.append("-B")
         self.start_process(cmd, env=env)

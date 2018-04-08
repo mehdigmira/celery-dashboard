@@ -1,3 +1,4 @@
+from __future__ import division
 from time import sleep
 
 from celery import Celery
