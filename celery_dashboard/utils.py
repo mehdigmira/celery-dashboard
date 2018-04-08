@@ -35,18 +35,27 @@ def load(args, kwargs):
 
 def cancel_tasks(tasks, session):
     to_rm = []
+    to_set_as_cancelled = []
     count = 0
     for task in tasks:
         count += 1
         if task.status == "QUEUED":
             current_app.control.revoke(task.task_id)
+            to_set_as_cancelled.append(task.task_id)
         else:
             to_rm.append(task.task_id)
         if len(to_rm) > 1000:
             session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
             to_rm = []
+        if len(to_set_as_cancelled) > 1000:
+            (session.query(Task).filter(Task.task_id.in_(to_set_as_cancelled))
+             .update({'status': "CANCELLED"}, synchronize_session=False))
+            to_set_as_cancelled = []
     if to_rm:
         session.query(Task).filter(Task.task_id.in_(to_rm)).delete(synchronize_session=False)
+    if to_set_as_cancelled:
+        (session.query(Task).filter(Task.task_id.in_(to_set_as_cancelled))
+         .update({'status': "CANCELLED"}, synchronize_session=False))
     return count
 
 

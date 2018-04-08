@@ -112,10 +112,15 @@ def test_revoke_task(api, celery_worker):
     # revoke it
     requests.get(api.api_url + "task/%s/revoke" % async_res.task_id)
 
-    # sleep until it is discarded by worker
-    time.sleep(5)
-
     with session_ctx_manager() as session:
+
+        task = session.query(Task).one()
+        assert task.status == "CANCELLED"
+
+        # sleep until it is discarded by worker
+        time.sleep(5)
+
+        session.expire_all()
         task = session.query(Task).one()
         assert task.status == "REVOKED"
 
@@ -125,6 +130,7 @@ def test_revoke_task(api, celery_worker):
         task = session.query(Task).filter(Task.task_id == async_res.task_id).one()
         assert task
 
+        session.expire_all()
         # task is not queued it should just be deleted from db
         requests.get(api.api_url + "task/%s/revoke" % async_res.task_id)
         task = session.query(Task).filter(Task.task_id == async_res.task_id).first()
