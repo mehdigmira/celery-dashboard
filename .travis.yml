@@ -4,7 +4,7 @@ services:
   - docker
 
 script:
-  - make test2_celery3
-  - make test2_celery4
-  - make test3_celery4
+#  - make test2_celery3
+#  - make test2_celery4
+#  - make test3_celery4
   - make test3_celery3
