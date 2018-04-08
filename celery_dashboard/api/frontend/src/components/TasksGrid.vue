@@ -18,7 +18,7 @@
                     <v-select
                             label="Status"
                             v-model="filters.status"
-                            :items="['ALL', 'QUEUED', 'STARTED', 'RETRY', 'SUCCESS', 'FAILURE']"
+                            :items="['ALL', 'QUEUED', 'STARTED', 'RETRY', 'SUCCESS', 'FAILURE', 'REVOKED', 'CANCELLED']"
                     ></v-select>
                     <v-text-field
                             label="Exception"
@@ -102,11 +102,13 @@
                 if (this.params.value == "QUEUED") color = "orange";
                 if (this.params.value == "SUCCESS") color = "green";
                 if (this.params.value == "FAILURE") color = "red";
+                if (this.params.value == "REVOKED") color = "red";
+                if (this.params.value == "CANCELLED") color = "red";
                 if (this.params.value == "RETRY") color = "indigo";
                 return color;
             },
             revoke() {
-                fetch(`/api/task/${this.params.data.task_id}/revoke`, { credentials:"include" }).then((response) => {
+                fetch(`/api/task/${this.params.data.task_id}/revoke`, {credentials: "include"}).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {text: "An error occurred", color: "error", timeout: 2000});
                         let error = new Error(response.statusText);
@@ -121,7 +123,8 @@
                 });
             },
             requeue() {
-                fetch(`/api/task/${this.params.data.task_id}/requeue`, { credentials:"include" }).then((response) => {
+                let router = this.params.context.componentParent.$router;
+                fetch(`/api/task/${this.params.data.task_id}/requeue`, {credentials: "include"}).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
                             text: "An error occurred",
@@ -132,11 +135,19 @@
                         error.response = response;
                         throw error
                     }
-                    return EventBus.$emit('snackbar:show', {
+                    EventBus.$emit('snackbar:show', {
                         text: "Task successfully queued",
                         color: "success",
                         timeout: 2000
                     });
+                    return response.json();
+                }).then((json) => {
+                    router.push({
+                        name: 'jobs',
+                        query: {
+                            taskId: json.taskId
+                        }
+                    })
                 });
             }
         }
@@ -214,7 +225,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(filters),
-                    credentials:"include"
+                    credentials: "include"
                 }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
@@ -248,7 +259,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(filters),
-                    credentials:"include"
+                    credentials: "include"
                 }).then((response) => {
                     if (response.status !== 200) {
                         EventBus.$emit('snackbar:show', {
@@ -321,7 +332,7 @@
                         let filters = self.getFiltersParams();
                         let apiRoute = `/api/tasks?start=${params.startRow}&end=${params.endRow}&sort=${sorts.join(',')}`
                         if (filters != "") apiRoute += `&${filters.join("&")}`;
-                        fetch(apiRoute, { credentials:"include" }).then((response) => {
+                        fetch(apiRoute, {credentials: "include"}).then((response) => {
                             api.hideOverlay();
                             return response.json()
                         })

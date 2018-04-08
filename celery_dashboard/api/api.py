@@ -68,9 +68,9 @@ def tasks():
         current_app.db.session.commit()
         return json.dumps({"count": count})
     elif request.method == "POST":
-        count = requeue_tasks(q.yield_per(1000), current_app.db.session)
+        task_ids = requeue_tasks(q.yield_per(1000), current_app.db.session)
         current_app.db.session.commit()
-        return json.dumps({"count": count})
+        return json.dumps({"count": len(task_ids)})
 
 
 @api.route("/task/<task_id>/revoke")
@@ -87,11 +87,12 @@ def revoke_task(task):
 @requires_auth
 @with_task
 def requeue_task(task):
-    if not requeue_tasks([task], current_app.db.session):
+    task_ids = requeue_tasks([task], current_app.db.session)
+    if not task_ids:
         abort(400)
     current_app.db.session.commit()
 
-    return json.dumps({"message": "ok"})
+    return json.dumps({"taskId": task_ids[0]})
 
 
 @api.route("/queues")

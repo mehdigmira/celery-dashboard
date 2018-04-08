@@ -150,8 +150,8 @@ def test_requeue_task(api_no_backend, celery_worker_no_backend):
 
     celery_worker_no_backend.stop()
 
-    requests.get(api_no_backend.api_url + "task/%s/requeue" % divide_job.task_id)
-    requests.get(api_no_backend.api_url + "task/%s/requeue" % empty_job.task_id)
+    assert "taskId" in requests.get(api_no_backend.api_url + "task/%s/requeue" % divide_job.task_id).json()
+    assert requests.get(api_no_backend.api_url + "task/%s/requeue" % empty_job.task_id).status_code == 400
 
     with session_ctx_manager() as session:
         tasks = session.query(Task).all()
