@@ -20,3 +20,32 @@ It was built with two main goals:
 ![Image of Dashboard](https://image.ibb.co/iPWTMc/jobs_tab.png)
 ![Image of Dashboard](https://image.ibb.co/hifNgc/run_task.png)
 ![Image of Dashboard](https://image.ibb.co/dpiuSH/workers_tab.png)
+
+
+# Requirements & compatibility
+
+A PostgreSQL database >= 9.5 is required.
+The code has been tested for celery's versions 3 and 4 running under python 2.7 or 3.
+
+# Getting started
+
+The first thing to do after installing the package is to update the python file where your celery application is created as follows:
+
+```python
+from celery import Celery
+
+from celery_dashboard import init
+
+celery_app = Celery('test_app', broker='redis://localhost', backend='redis://localhost')
+
+init(celery_app, "YOU POSTGRES DATABASE URI (e.g postgresql://docker:docker@localhost:5432/docker)", "YOUR DASHBOARD USERNAME", "YOUR DASHBOARD PASSWORD")
+
+@celery_app.task(name="divide")
+def div(x, y):
+    return x / y
+
+```
+
+That's it ! your app is all setup.
+Now if you want to checkout the dashboard you just need to run `celery -A <your_app> dashboard`
+And the dashboard will be running on localhost:5000. If you want to specify an other port you can add `--port=<your_port>` to the command line
