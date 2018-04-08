@@ -1,4 +1,7 @@
 # celery-dashboard (WIP)
+
+[![Build Status](https://api.travis-ci.org/pricingassistant/celery_dashboard.svg?branch=master)]
+
 A dashboard to monitor celery tasks. 
 
 Advantages over Celery Flower:
