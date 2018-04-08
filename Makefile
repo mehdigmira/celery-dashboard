@@ -1,5 +1,5 @@
 docker_celery3:
-	sudo docker build --build-arg celery_version=3.1 -t celery3_dashboard_local .
+	sudo docker build --build-arg celery_version=3.5 -t celery3_dashboard_local .
 
 docker_celery4:
 	sudo docker build --build-arg celery_version=4.1 -t celery4_dashboard_local .
