@@ -1,0 +1,14 @@
+sudo: required
+
+services:
+  - docker
+
+env:
+  - PYTHON_BIN=python
+  - PYTHON_BIN=python3
+
+script:
+  - make test2_celery3
+  - make test2_celery4
+  - make test3_celery4
+  - make test3_celery3
