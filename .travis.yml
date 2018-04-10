@@ -3,8 +3,10 @@ sudo: required
 services:
   - docker
 
+env:
+  - PYTHON_BIN=python2.7
+  - PYTHON_BIN=python3
+
 script:
-#  - make test2_celery3
-#  - make test2_celery4
-#  - make test3_celery4
-  - make test3_celery3
+  - docker run --rm -i -t -v `pwd`:/app:Z -w /app celery4_dashboard_local $PYTHON_BIN -m pytest tests/ -svx
+  - docker run --rm -i -t -v `pwd`:/app:Z -w /app celery3_dashboard_local $PYTHON_BIN -m pytest tests/ -svx

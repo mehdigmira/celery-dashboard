@@ -26,7 +26,7 @@ It was built with two main goals:
 # Requirements & compatibility
 
 A PostgreSQL database >= 9.5 is required.
-The code has been tested for celery version 3 and 4 running under python 2.7 or 3.
+The code has been tested for celery version 3.1 and 4.1 running under both python 2.7 and python 3.5.
 
 # Getting started
 
