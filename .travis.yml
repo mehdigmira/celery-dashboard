@@ -7,6 +7,10 @@ env:
   - PYTHON_BIN=python2.7
   - PYTHON_BIN=python3
 
+before_install:
+  - make docker_celery3
+  - make docker_celery4
+
 script:
   - docker run --rm -i -t -v `pwd`:/app:Z -w /app celery4_dashboard_local $PYTHON_BIN -m pytest tests/ -svx
   - docker run --rm -i -t -v `pwd`:/app:Z -w /app celery3_dashboard_local $PYTHON_BIN -m pytest tests/ -svx
